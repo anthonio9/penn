@@ -19,6 +19,9 @@ def datasets(datasets):
     if 'ptdb' in datasets:
         ptdb()
 
+    if 'gset' in datasets:
+        gset()
+
 
 ###############################################################################
 # Individual datasets
@@ -45,3 +48,21 @@ def ptdb():
     torchutil.download.zip(
         'https://www2.spsc.tugraz.at/databases/PTDB-TUG/SPEECH_DATA_ZIPPED.zip',
         directory)
+
+
+def gset():
+    """Download GuitarSet dataset"""
+    torchutil.download
+    directory_annotation = penn.DATA_DIR / 'gset' / 'annotations'
+    directory_audio_mono_mic = penn.DATA_DIR / 'gset' / 'audio-mono-mic'
+
+    directory_annotation.mkdir(exist_ok=True, parents=True)
+    directory_audio_mono_mic.mkdir(exist_ok=True, parents=True)
+
+    torchutil.download.zip(
+        'https://zenodo.org/records/3371780/files/annotation.zip',
+        directory_annotation)
+
+    torchutil.download.zip(
+        'https://zenodo.org/records/3371780/files/audio_mono-mic.zip',
+        directory_audio_mono_mic)
