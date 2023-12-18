@@ -229,7 +229,7 @@ def gset():
     # Write audio and pitch to cache
     for i, (audio_file, pitch_file) in torchutil.iterator(
         enumerate(zip(audio_files, pitch_files)),
-        'Preprocessing mdb',
+        'Preprocessing gset',
         total=len(audio_files)
     ):
         stem = f'{i:06d}'
@@ -253,7 +253,7 @@ def gset():
         jams_track = jams.load(str(pitch_file))
         pitch, times = extract_pitch_array_jams(
                 jams_track, audio_file.stem, uniform=True)
-        pitch = pitch[3, :]
+        pitch = pitch[penn.STRING_INDEX, :]
 
         # Fill unvoiced regions via linear interpolation
         pitch, voiced = interpolate_unvoiced(pitch)

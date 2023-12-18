@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument(
         '--datasets',
         nargs='+',
-        default=['mdb', 'ptdb'],
+        default=penn.DATASETS,
         help='The datasets to preprocess')
     return parser.parse_known_args()[0]
 

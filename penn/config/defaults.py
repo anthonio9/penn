@@ -28,6 +28,9 @@ FMIN = 31.  # Hz
 # Distance between adjacent frames
 HOPSIZE = 80  # samples
 
+# String index
+STRING_INDEX = 3
+
 # The size of the window used for locally normal pitch decoding
 LOCAL_PITCH_WINDOW_SIZE = 19
 
