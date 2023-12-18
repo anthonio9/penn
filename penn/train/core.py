@@ -4,6 +4,7 @@ import torch
 import torchutil
 
 import penn
+import wandb
 
 
 ###############################################################################
@@ -12,7 +13,7 @@ import penn
 
 
 @torchutil.notify('train')
-def train(datasets, directory, gpu=None):
+def train(datasets, directory, gpu=None, use_wand=False):
     """Train a model"""
     device = torch.device('cpu' if gpu is None else f'cuda:{gpu}')
     model = penn.model.Model().to(device)
@@ -60,6 +61,27 @@ def train(datasets, directory, gpu=None):
         best_accuracy = 0.
         stop = False
 
+    ####################
+    # Weights & Biases #
+    ####################
+
+    if use_wand:
+        wandb.login()
+        log_wandb = wandb.init(
+            # Set the project where this run will be logged
+            project="PENNbyAntoni",
+
+            # Track hyperparameters and run metadata
+            config={
+                "learning_rate": penn.LEARNING_RATE,
+                "epochs": penn.STEPS,
+                "loss" : penn.LOSS,
+                "pitch_bins" : penn.PITCH_BINS,
+                "config" : penn.CONFIG,
+                "datasets" : penn.DATASETS,
+            })
+
+
     #########
     # Train #
     #########
@@ -77,6 +99,9 @@ def train(datasets, directory, gpu=None):
 
         # Seed sampler
         train_loader.sampler.set_epoch(epoch)
+        train_loss = []
+        train_accuracy = []
+        valid_accuracy = []
 
         for batch in train_loader:
 
@@ -90,6 +115,8 @@ def train(datasets, directory, gpu=None):
 
                 # Compute losses
                 losses = loss(logits, bins.to(device))
+
+                train_loss.append(losses.item())
 
             ##################
             # Optimize model #
@@ -127,8 +154,9 @@ def train(datasets, directory, gpu=None):
                     step,
                     model,
                     gpu)
-                evaluate_fn('train', train_loader)
-                valid_accuracy = evaluate_fn('valid', valid_loader)
+
+                train_accuracy.append(evaluate_fn('train', train_loader))
+                valid_accuracy.append(evaluate_fn('valid', valid_loader)) 
 
                 # Maybe stop training
                 if penn.EARLY_STOPPING:
@@ -151,6 +179,18 @@ def train(datasets, directory, gpu=None):
             # Update progress bar
             progress.update()
 
+        if use_wand:
+            metrics = {}
+            metrics["train_loss"] = sum(train_loss) / len(train_loss)
+
+            if len(train_accuracy) > 0:
+                metrics["train_accuracy"] = sum(train_accuracy) / len(train_accuracy)
+
+            if len(valid_accuracy) > 0:
+                metrics["valid_accuracy"] = sum(valid_accuracy) / len(valid_accuracy)
+
+            log_wandb.log(data=metrics,
+                          step=epoch)
         # Update epoch
         epoch += 1
 

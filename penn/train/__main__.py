@@ -12,7 +12,7 @@ import penn
 ###############################################################################
 
 
-def main(config, datasets, gpu):
+def main(config, datasets, gpu, use_wandb):
     # Create output directory
     directory = penn.RUNS_DIR / config.stem
     directory.mkdir(parents=True, exist_ok=True)
@@ -21,7 +21,7 @@ def main(config, datasets, gpu):
     shutil.copyfile(config, directory / config.name)
 
     # Train
-    penn.train(datasets, directory, gpu)
+    penn.train(datasets, directory, gpu, use_wandb)
 
     # Get latest checkpoint
     checkpoint = torchutil.checkpoint.latest_path(directory)
@@ -47,6 +47,11 @@ def parse_args():
         '--gpu',
         type=int,
         help='The GPU index')
+    parser.add_argument(
+        '-w', 
+        '--use_wandb',
+        action="store_true",
+        help='To use [True] or not [False] to use Weights & Biases logging')
     return parser.parse_args()
 
 
