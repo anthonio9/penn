@@ -156,9 +156,24 @@ def train(datasets, directory, gpu=None, use_wand=False):
                     model,
                     gpu)
 
-                train_accuracy_list.append(evaluate_fn('train', train_loader))
+                train_accuracy = evaluate_fn('train', train_loader)
+                train_accuracy_list.append(train_accuracy)
                 valid_accuracy = evaluate_fn('valid', valid_loader)
-                valid_accuracy_list.append(evaluate_fn('valid', valid_loader)) 
+                valid_accuracy_list.append(valid_accuracy) 
+
+                if use_wand:
+                    metrics = {}
+                    metrics[f"train_loss_avg_{penn.LOG_INTERVAL}"] = sum(train_loss_list[-penn.LOG_INTERVAL:]) \
+                                / len(train_loss_list[-penn.LOG_INTERVAL:])
+
+                    if len(train_accuracy_list) > 0:
+                        metrics[f"train_accuracy_{penn.LOG_INTERVAL}"] = train_accuracy
+
+                    if len(valid_accuracy_list) > 0:
+                        metrics[f"valid_accuracy_{penn.LOG_INTERVAL}"] = valid_accuracy
+
+                    log_wandb.log(data=metrics,
+                                  step=step)
 
                 # Maybe stop training
                 if penn.EARLY_STOPPING:
@@ -186,13 +201,13 @@ def train(datasets, directory, gpu=None, use_wand=False):
             metrics["train_loss"] = sum(train_loss_list) / len(train_loss_list)
 
             if len(train_accuracy_list) > 0:
-                metrics["train_accuracy"] = sum(train_accuracy_list) / len(train_accuracy_list)
+                metrics["train_accuracy_per_epoch"] = sum(train_accuracy_list) / len(train_accuracy_list)
 
             if len(valid_accuracy_list) > 0:
-                metrics["valid_accuracy"] = sum(valid_accuracy_list) / len(valid_accuracy_list)
+                metrics["valid_accuracy_per_epoch"] = sum(valid_accuracy_list) / len(valid_accuracy_list)
 
             log_wandb.log(data=metrics,
-                          step=epoch)
+                          step=step)
         # Update epoch
         epoch += 1
 
