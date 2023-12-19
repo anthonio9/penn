@@ -96,12 +96,13 @@ def train(datasets, directory, gpu=None, use_wand=False):
         step,
         penn.STEPS)
     while step < penn.STEPS and (not penn.EARLY_STOPPING or not stop):
+        print(f"epoch: {epoch}")
 
         # Seed sampler
         train_loader.sampler.set_epoch(epoch)
-        train_loss = []
-        train_accuracy = []
-        valid_accuracy = []
+        train_loss_list = []
+        train_accuracy_list = []
+        valid_accuracy_list = []
 
         for batch in train_loader:
 
@@ -116,7 +117,7 @@ def train(datasets, directory, gpu=None, use_wand=False):
                 # Compute losses
                 losses = loss(logits, bins.to(device))
 
-                train_loss.append(losses.item())
+                train_loss_list.append(losses.item())
 
             ##################
             # Optimize model #
@@ -155,8 +156,9 @@ def train(datasets, directory, gpu=None, use_wand=False):
                     model,
                     gpu)
 
-                train_accuracy.append(evaluate_fn('train', train_loader))
-                valid_accuracy.append(evaluate_fn('valid', valid_loader)) 
+                train_accuracy_list.append(evaluate_fn('train', train_loader))
+                valid_accuracy = evaluate_fn('valid', valid_loader)
+                valid_accuracy_list.append(evaluate_fn('valid', valid_loader)) 
 
                 # Maybe stop training
                 if penn.EARLY_STOPPING:
@@ -181,13 +183,13 @@ def train(datasets, directory, gpu=None, use_wand=False):
 
         if use_wand:
             metrics = {}
-            metrics["train_loss"] = sum(train_loss) / len(train_loss)
+            metrics["train_loss"] = sum(train_loss_list) / len(train_loss_list)
 
-            if len(train_accuracy) > 0:
-                metrics["train_accuracy"] = sum(train_accuracy) / len(train_accuracy)
+            if len(train_accuracy_list) > 0:
+                metrics["train_accuracy"] = sum(train_accuracy_list) / len(train_accuracy_list)
 
-            if len(valid_accuracy) > 0:
-                metrics["valid_accuracy"] = sum(valid_accuracy) / len(valid_accuracy)
+            if len(valid_accuracy_list) > 0:
+                metrics["valid_accuracy"] = sum(valid_accuracy_list) / len(valid_accuracy_list)
 
             log_wandb.log(data=metrics,
                           step=epoch)
