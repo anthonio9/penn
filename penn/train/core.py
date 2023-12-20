@@ -5,6 +5,7 @@ import torchutil
 
 import penn
 import wandb
+from socket import gethostname
 
 
 ###############################################################################
@@ -79,6 +80,7 @@ def train(datasets, directory, gpu=None, use_wand=False):
                 "pitch_bins" : penn.PITCH_BINS,
                 "config" : penn.CONFIG,
                 "datasets" : penn.DATASETS,
+                "hostname" : gethostname(),
             })
 
 
