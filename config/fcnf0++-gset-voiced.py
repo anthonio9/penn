@@ -6,6 +6,8 @@ CONFIG = 'fcnf0++-gset-voiced'
 # gset only
 DATASETS = ['gset']
 
+EVALUATION_DATASETS = ['gset']
+
 LOG_INTERVAL = 500
 
 # audio parameters
