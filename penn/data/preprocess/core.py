@@ -6,6 +6,7 @@ import jams
 import numpy as np
 import torchaudio
 import torchutil
+import typing
 
 import penn
 
@@ -27,9 +28,17 @@ PTDB_HOPSIZE_SECONDS = PTDB_HOPSIZE / PTDB_SAMPLE_RATE
 
 # GSET parameters
 GSET_HOPSIZE = 256
-GSET_SAMPLE_RATE = 441000
+GSET_SAMPLE_RATE = 44100
 GSET_HOPSIZE_SECONDS = GSET_HOPSIZE / GSET_SAMPLE_RATE 
 
+##################################################
+# JAMS ATTRIBUTES                                #
+##################################################
+
+JAMS_NOTE_MIDI = 'note_midi'
+JAMS_PITCH_HZ = 'pitch_contour'
+JAMS_STRING_IDX = 'data_source'
+JAMS_METADATA = 'file_metadata'
 
 ###############################################################################
 # Preprocess datasets
@@ -210,7 +219,6 @@ def ptdb():
 
 def gset():
     """Preprocess GuitarSet"""
-    pass
     # Get audio files
     audio_files = (penn.DATA_DIR / 'gset'/ 'audio-mono-mic').glob('*.wav')
     audio_files = sorted(audio_files)
@@ -412,5 +420,66 @@ def extract_pitch_array_jams(jam, track, uniform=True):
         print(f"{err}, track: {track}, slice lengths: {[len(slice) for slice in pitch_array_slices_list]}")
 
     assert pitch_array.shape == (stack_size, time_steps_array.size)
+
+    return pitch_array, time_steps_array
+
+
+def extract_pitch_array_jams2(jam: jams.JAMS, track, uniform=True):
+    """
+    Extract pitch lists spread across slices (e.g. guitar strings) from JAMS annotations into a dictionary.
+
+    Parameters
+    ----------
+    jam : JAMS object
+      JAMS file data
+    uniform : bool
+      Whether to place annotations on a uniform time grid
+
+    Returns
+    ----------
+    pitch_dict : dict
+      Dictionary containing pitch_array with pitch values in Hz and time steps array
+      pitch_array shape is (S, T), 
+      time_steps array is of shape (T, )
+      S - number of strings, T - number of time steps
+    """
+    pitch_array = []
+    time_steps_array = []
+
+    # Extract all of the pitch annotations
+    pitch_data_slices = jam.annotations[JAMS_PITCH_HZ]
+
+    # Obtain the number of annotations
+    stack_size = len(pitch_data_slices)
+
+    # Initialize a dictionary to hold the pitch lists
+    stacked_pitch_list = dict()
+    slice_names = []
+
+    # Loop through the slices of the stack
+    for slc in range(stack_size):
+        # Extract the pitch list pertaining to this slice
+        slice_pitches = pitch_data_slices[slc]
+
+        # Extract the string label for this slice
+        string = slice_pitches.annotation_metadata[JAMS_STRING_IDX]
+        slice_names.append(string)
+
+        # Initialize an array/list to hold the times/frequencies associated with each observation
+        entry_times, slice_pitch_list = np.empty(0), list()
+
+        # Loop through the pitch observations pertaining to this slice
+        for pitch in slice_pitches:
+            # Extract the pitch
+            freq = np.array([pitch.value['frequency']])
+
+            # Don't keep track of zero or unvoiced frequencies
+            if np.sum(freq) == 0 or not pitch.value['voiced']:
+                freq = np.empty(0)
+
+            # Append the observation time
+            entry_times = np.append(entry_times, pitch.time)
+            # Append the frequency
+            slice_pitch_list.append(freq)
 
     return pitch_array, time_steps_array
