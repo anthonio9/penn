@@ -92,7 +92,7 @@ BENCHMARK = False
 CHECKPOINT_INTERVAL = 25000  # steps
 
 # List of all datasets
-DATASETS = ['mdb', 'ptdb', 'gset']
+DATASETS = ['mdb', 'ptdb']
 
 # Method to use for evaluation
 METHOD = 'penn'
