@@ -1,12 +1,11 @@
 import itertools
 import warnings
 
-from amt_tools import tools
 import jams
 import numpy as np
 import torchaudio
 import torchutil
-import typing
+from typing import Tuple
 
 import penn
 
@@ -320,111 +319,94 @@ def interpolate_unvoiced(pitch):
     return 2 ** pitch, ~unvoiced
 
 
-def extract_pitch_array_jams(jam, track, uniform=True):
+def sort_pitch_list(times: np.ndarray, pitch_list: list) -> Tuple[np.ndarray, list]:
     """
-    Extract pitch lists spread across slices (e.g. guitar strings) from JAMS annotations into a dictionary.
+    Sort a pitch list by frame time.
 
     Parameters
     ----------
-    jam : JAMS object
-      JAMS file data
-    uniform : bool
-      Whether to place annotations on a uniform time grid
+    times : ndarray (N)
+      Time in seconds of beginning of each frame
+      N - number of time samples (frames)
+    pitch_list : list of ndarray (N x [...])
+      Array of pitches corresponding to notes
+      N - number of pitch observations (frames)
 
     Returns
     ----------
-    pitch_dict : dict
-      Dictionary containing pitch_array with pitch values in Hz and time steps array
-      pitch_array shape is (S, T), 
-      time_steps array is of shape (T, )
-      S - number of strings, T - number of time steps
+    times : ndarray (N)
+      Time in seconds of beginning of each frame, sorted by time
+      N - number of time samples (frames)
+    pitch_list : list of ndarray (N x [...])
+      Array of pitches corresponding to notes
+      N - number of pitch observations (frames), sorted by time
     """
-    # Extract all of the pitch annotations
-    pitch_data_slices = jam.annotations[tools.constants.JAMS_PITCH_HZ]
 
-    # Obtain the number of annotations
-    stack_size = len(pitch_data_slices)
+    # Obtain the indices corresponding to the sorted times
+    sort_order = list(np.argsort(times))
 
-    # Initialize a dictionary to hold the pitch lists
-    stacked_pitch_list = dict()
-    slice_names = []
+    # Sort the times
+    times = np.sort(times)
 
-    # Loop through the slices of the stack
-    for slc in range(stack_size):
-        # Extract the pitch list pertaining to this slice
-        slice_pitches = pitch_data_slices[slc]
+    # Sort the pitch list
+    pitch_list = [pitch_list[i] for i in sort_order]
 
-        # Extract the string label for this slice
-        string = slice_pitches.annotation_metadata[tools.constants.JAMS_STRING_IDX]
-        slice_names.append(string)
+    return times, pitch_list
 
-        # Initialize an array/list to hold the times/frequencies associated with each observation
-        entry_times, slice_pitch_list = np.empty(0), list()
 
-        # Loop through the pitch observations pertaining to this slice
-        for pitch in slice_pitches:
-            # Extract the pitch
-            freq = np.array([pitch.value['frequency']])
+def time_series_to_uniform(times: np.ndarray, values: list, hop_length: float, duration=None) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Convert a semi-regular time series with gaps into a uniform time series.
 
-            # Don't keep track of zero or unvoiced frequencies
-            if np.sum(freq) == 0 or not pitch.value['voiced']:
-                freq = np.empty(0)
+    Adapted from mir_eval pull request #336.
 
-            # Append the observation time
-            entry_times = np.append(entry_times, pitch.time)
-            # Append the frequency
-            slice_pitch_list.append(freq)
+    Parameters
+    ----------
+    times : ndarray
+      Array of times corresponding to a time series
+    values : list of ndarray
+      Observations made at times
+    hop_length : number (optional)
+      Time interval (seconds) between each observation in the uniform series
+    duration : number or None (optional)
+      Total length (seconds) of times series
+      If specified, should be greater than all observation times
 
-        # Sort the pitch list before resampling just in case it is not already sorted
-        entry_times, slice_pitch_list = tools.utils.sort_pitch_list(entry_times, slice_pitch_list)
+    Returns
+    -------
+    times : ndarray
+      Uniform time array
+    values : ndarray
+      Observations corresponding to uniform times
+    """
 
-        if uniform:
-            # Align the pitch list with a uniform time grid
-            entry_times, slice_pitch_list = tools.utils.time_series_to_uniform(
-                    times=entry_times,
-                    values=slice_pitch_list,
-                    hop_length=GSET_HOPSIZE_SECONDS,
-                    duration=jam.file_metadata.duration)
-
-        # Add the pitch list to the stacked pitch list dictionary under the slice key
-        stacked_pitch_list.update(tools.utils.pitch_list_to_stacked_pitch_list(entry_times, slice_pitch_list, string))
+    if duration is None:
+        # Default the duration to the last reported time in the series
+        duration = times[-1]
 
     # Determine the total number of observations in the uniform time series
-    num_entries = int(np.ceil(jam.file_metadata.duration / GSET_HOPSIZE_SECONDS)) + 1
-    time_steps_array = GSET_HOPSIZE_SECONDS * np.arange(num_entries)
+    num_entries = int(np.ceil(duration / hop_length)) + 1
 
-    pitch_array_slices_list = []
+    # Attempt to fill in blank frames with the appropriate value
+    empty_fill = np.zeros(1)
+    new_values = [empty_fill] * num_entries
+    new_times = hop_length * np.arange(num_entries)
 
-    # for idx, slc in enumerate(slice_names):
-    for slc in slice_names:
-        # get the list of pitches in hz for slc string
-        pitch_list = stacked_pitch_list[slc][1]
+    if not len(times) or not len(values):
+        return new_times, np.array(new_values)
 
-        # fill the empty numpy arrays in the pitch_list with zeros
-        pitch_list = [np.zeros(1) if pitch.size == 0 else pitch for pitch in pitch_list]
+    # Determine which indices the provided observations fall under
+    idcs = np.round(times / hop_length).astype(int)
 
-        try: 
-            # concatenate the whole thing into a numpy array
-            pitch_list = np.concatenate(pitch_list)
-        except ValueError:
-            print(f"Empty array, track: {track}")
-            print(f"Replacing with np.zeros({len(time_steps_array)})")
-            pitch_list = np.zeros(len(time_steps_array))
+    # Fill the observed values into their respective locations in the uniform series
+    for i in range(len(idcs)):
+        if times[i] <= duration:
+            new_values[idcs[i]] = values[i]
 
-        # append the slice to a list of all slices 
-        pitch_array_slices_list.append(pitch_list)
-
-    try: 
-        pitch_array = np.vstack(pitch_array_slices_list)
-    except ValueError as err:
-        print(f"{err}, track: {track}, slice lengths: {[len(slice) for slice in pitch_array_slices_list]}")
-
-    assert pitch_array.shape == (stack_size, time_steps_array.size)
-
-    return pitch_array, time_steps_array
+    return new_times, np.array(new_values)
 
 
-def extract_pitch_array_jams2(jam: jams.JAMS, track, uniform=True):
+def extract_pitch_array_jams(jam: jams.JAMS, track, uniform=True) -> Tuple[np.ndarray, np.ndarray]:
     """
     Extract pitch lists spread across slices (e.g. guitar strings) from JAMS annotations into a dictionary.
 
@@ -443,9 +425,6 @@ def extract_pitch_array_jams2(jam: jams.JAMS, track, uniform=True):
       time_steps array is of shape (T, )
       S - number of strings, T - number of time steps
     """
-    pitch_array = []
-    time_steps_array = []
-
     # Extract all of the pitch annotations
     pitch_data_slices = jam.annotations[JAMS_PITCH_HZ]
 
@@ -453,8 +432,9 @@ def extract_pitch_array_jams2(jam: jams.JAMS, track, uniform=True):
     stack_size = len(pitch_data_slices)
 
     # Initialize a dictionary to hold the pitch lists
-    stacked_pitch_list = dict()
     slice_names = []
+    pitch_list = []
+    times_list = []
 
     # Loop through the slices of the stack
     for slc in range(stack_size):
@@ -475,11 +455,31 @@ def extract_pitch_array_jams2(jam: jams.JAMS, track, uniform=True):
 
             # Don't keep track of zero or unvoiced frequencies
             if np.sum(freq) == 0 or not pitch.value['voiced']:
-                freq = np.empty(0)
+                freq = np.zeros(1)
 
             # Append the observation time
             entry_times = np.append(entry_times, pitch.time)
             # Append the frequency
             slice_pitch_list.append(freq)
+
+        # Sort the pitch list before resampling just in case it is not already sorted
+        entry_times, slice_pitch_array = sort_pitch_list(entry_times, slice_pitch_list)
+
+        # Align the pitch list with a uniform time grid
+        entry_times, slice_pitch_array = time_series_to_uniform(
+                times=entry_times,
+                values=slice_pitch_array,
+                hop_length=penn.data.preprocess.GSET_HOPSIZE_SECONDS,
+                duration=jam.file_metadata.duration)
+
+        times_list.append(entry_times)
+        pitch_list.append(slice_pitch_array.T)
+
+    # assert all entry times arrays are of the same lenght
+    time_lenghts = [len(times) for times in times_list]
+    assert time_lenghts[0] == sum(time_lenghts) / len(time_lenghts)
+
+    time_steps_array = times_list[0]
+    pitch_array = np.vstack(pitch_list)
 
     return pitch_array, time_steps_array
