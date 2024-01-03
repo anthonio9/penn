@@ -66,6 +66,8 @@ def train(datasets, directory, gpu=None, use_wand=False):
     # Weights & Biases #
     ####################
 
+    log_wandb = None
+
     if use_wand:
         wandb.login()
         log_wandb = wandb.init(
@@ -158,9 +160,9 @@ def train(datasets, directory, gpu=None, use_wand=False):
                     model,
                     gpu)
 
-                train_accuracy = evaluate_fn('train', train_loader)
+                train_accuracy = evaluate_fn('train', train_loader, log_wandb)
                 train_accuracy_list.append(train_accuracy)
-                valid_accuracy = evaluate_fn('valid', valid_loader)
+                valid_accuracy = evaluate_fn('valid', valid_loader, log_wandb)
                 valid_accuracy_list.append(valid_accuracy) 
 
                 if use_wand:
@@ -230,7 +232,7 @@ def train(datasets, directory, gpu=None, use_wand=False):
 ###############################################################################
 
 
-def evaluate(directory, step, model, gpu, condition, loader):
+def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
     """Perform model evaluation"""
     device = torch.device('cpu' if gpu is None else f'cuda:{gpu}')
 
@@ -260,6 +262,10 @@ def evaluate(directory, step, model, gpu, condition, loader):
     # Format results
     scalars = {
         f'{key}/{condition}': value for key, value in metrics().items()}
+
+    if log_wandb is not None:
+        log_wandb.log(data=scalars,
+                      step=step)
 
     # Write to tensorboard
     torchutil.tensorboard.update(directory, step, scalars=scalars)
