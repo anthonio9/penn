@@ -260,7 +260,10 @@ def gset():
         jams_track = jams.load(str(pitch_file))
         pitch, times = extract_pitch_array_jams(
                 jams_track, audio_file.stem, uniform=True)
-        pitch = pitch[penn.STRING_INDEX, :]
+
+        if penn.STRING_INDEX is not None:
+            pitch = pitch[penn.STRING_INDEX, :]
+            pitch = pitch[None, :]
 
         if penn.INTERPOLATE_UNVOICED:
             # Fill unvoiced regions via linear interpolation
@@ -269,22 +272,44 @@ def gset():
             unvoiced = pitch == 0
             voiced = ~unvoiced
 
-        # Get target number of frames
-        frames = penn.convert.samples_to_frames(audio.shape[-1])
+        pitch_list = np.vsplit(pitch, pitch.shape[0])
+        pitch_list_final = []
 
-        # Linearly interpolate to target number of frames
-        new_times = penn.HOPSIZE_SECONDS * np.arange(0, frames)
-        new_times += penn.HOPSIZE_SECONDS / 2.
-        pitch = 2. ** np.interp(new_times, times, np.log2(pitch))
+        voiced_list = np.vsplit(voiced, voiced.shape[0])
+        voiced_list_final = []
 
-        # Linearly interpolate voiced/unvoiced tokens
-        voiced = np.interp(new_times, times, voiced) > .5
+        for pitch_arr, voiced_arr in zip(pitch_list, voiced_list):
+            # Get target number of frames
+            frames = penn.convert.samples_to_frames(audio.shape[-1])
 
-        # Check shapes
-        assert (
-            penn.convert.samples_to_frames(audio.shape[-1]) ==
-            pitch.shape[-1] ==
-            voiced.shape[-1])
+            pitch_arr = pitch_arr[0, :]
+            voiced_arr = voiced_arr[0, :]
+
+            # Linearly interpolate to target number of frames
+            new_times = penn.HOPSIZE_SECONDS * np.arange(0, frames)
+            new_times += penn.HOPSIZE_SECONDS / 2.
+            pitch_arr = 2. ** np.interp(new_times, times, np.log2(pitch_arr))
+
+            # Linearly interpolate voiced_arr/unvoiced_arr tokens
+            voiced_arr = np.interp(new_times, times, voiced_arr) > .5
+
+            # Check shapes
+            assert (
+                penn.convert.samples_to_frames(audio.shape[-1]) ==
+                pitch_arr.shape[-1] ==
+                voiced_arr.shape[-1])
+
+            pitch_list_final.append(pitch_arr)
+            voiced_list_final.append(voiced_arr)
+
+        pitch = np.vstack(pitch_list_final)
+        voiced = np.vstack(voiced_list_final)
+
+        if pitch.shape[0] == 1:
+            pitch = pitch[0, :]
+
+        if voiced.shape[0] == 1:
+            voiced = voiced[0, :]
 
         # Save to cache
         np.save(output_directory / f'{stem}-pitch.npy', pitch)
