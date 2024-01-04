@@ -262,8 +262,12 @@ def gset():
                 jams_track, audio_file.stem, uniform=True)
         pitch = pitch[penn.STRING_INDEX, :]
 
-        # Fill unvoiced regions via linear interpolation
-        pitch, voiced = interpolate_unvoiced(pitch)
+        if penn.INTERPOLATE_UNVOICED:
+            # Fill unvoiced regions via linear interpolation
+            pitch, voiced = interpolate_unvoiced(pitch)
+        else:
+            unvoiced = pitch == 0
+            voiced = ~unvoiced
 
         # Get target number of frames
         frames = penn.convert.samples_to_frames(audio.shape[-1])

@@ -55,6 +55,9 @@ SAMPLE_RATE = 8000  # hz
 # Size of the analysis window
 WINDOW_SIZE = 1024  # samples
 
+# turn on the interpolation of unvoiced samples
+INTERPOLATE_UNVOICED = True
+
 
 ###############################################################################
 # Directories
