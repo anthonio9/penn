@@ -135,8 +135,8 @@ class Dataset(torch.utils.data.Dataset):
                 waveform[start_sample:end_sample].copy())
 
         # Slice pitch and voicing
-        pitch = torch.from_numpy(pitch[start:end].copy())
-        voiced = torch.from_numpy(voiced[start:end].copy())
+        pitch = torch.from_numpy(pitch[..., start:end].copy())
+        voiced = torch.from_numpy(voiced[..., start:end].copy())
 
         # Convert to pitch bin categories
         bins = penn.convert.frequency_to_bins(pitch)

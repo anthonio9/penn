@@ -58,6 +58,9 @@ WINDOW_SIZE = 1024  # samples
 # turn on the interpolation of unvoiced samples
 INTERPOLATE_UNVOICED = True
 
+# number of pitch categories, for guitar it's 6
+PITCH_CATS = 1
+
 
 ###############################################################################
 # Directories

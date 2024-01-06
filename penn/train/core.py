@@ -248,6 +248,8 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
             # Forward pass
             logits = model(audio.to(device))
 
+            breakpoint()
+
             # Update metrics
             metrics.update(
                 logits.to(device),
@@ -281,7 +283,11 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
 def loss(logits, bins):
     """Compute loss function"""
     # Reshape inputs
-    logits = logits.permute(0, 2, 1).reshape(-1, penn.PITCH_BINS)
+    if len(logits.shape) == 4:
+        logits = logits.permute(0, 1, 3, 2).reshape(-1, penn.PITCH_BINS)
+    else:
+        logits = logits.permute(0, 2, 1).reshape(-1, penn.PITCH_BINS)
+
     bins = bins.flatten()
 
     # Maybe blur target
