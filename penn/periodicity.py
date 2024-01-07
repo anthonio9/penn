@@ -12,19 +12,19 @@ import penn
 
 def entropy(logits):
     """Entropy-based periodicity"""
-    distribution = torch.nn.functional.softmax(logits, dim=1)
+    distribution = torch.nn.functional.softmax(logits, dim=-2)
     return (
         1 + 1 / math.log(penn.PITCH_BINS) * \
-        (distribution * torch.log(distribution + 1e-7)).sum(dim=1))
+        (distribution * torch.log(distribution + 1e-7)).sum(dim=-2))
 
 
 def max(logits):
     """Periodicity as the maximum confidence"""
     if penn.LOSS == 'binary_cross_entropy':
-        return torch.sigmoid(logits).max(dim=1).values
+        return torch.sigmoid(logits).max(dim=-2).values
     elif penn.LOSS == 'categorical_cross_entropy':
         return torch.nn.functional.softmax(
-            logits, dim=1).max(dim=1).values
+            logits, dim=1).max(dim=-2).values
     raise ValueError(f'Loss function {penn.LOSS} is not implemented')
 
 

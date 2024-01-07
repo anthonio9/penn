@@ -106,7 +106,8 @@ def viterbi(logits):
 def local_expected_value(logits, window=penn.LOCAL_PITCH_WINDOW_SIZE):
     """Decode pitch using a normal assumption around the argmax"""
     # Get center bins
-    bins = logits.argmax(dim=1)
+    # dim -2 => [128, 1440, 1] (1440), [128, 6, 1440, 1] (1440)
+    bins = logits.argmax(dim=-2)
 
     return bins, local_expected_value_from_bins(bins, logits, window)
 
@@ -120,18 +121,18 @@ def expected_value(logits, cents):
     """Expected value computation from logits"""
     # Get local distributions
     if penn.LOSS == 'categorical_cross_entropy':
-        distributions = torch.nn.functional.softmax(logits, dim=1)
+        distributions = torch.nn.functional.softmax(logits, dim=-2)
     elif penn.LOSS == 'binary_cross_entropy':
         distributions = torch.sigmoid(logits)
     else:
         raise ValueError(f'Loss {penn.LOSS} is not defined')
 
     # Pitch is expected value in cents
-    pitch = (distributions * cents).sum(dim=1, keepdims=True)
+    pitch = (distributions * cents).sum(dim=-1, keepdims=True)
 
     # BCE requires normalization
     if penn.LOSS == 'binary_cross_entropy':
-        pitch = pitch / distributions.sum(dim=1)
+        pitch = pitch / distributions.sum(dim=-1)
 
     # Convert to hz
     return penn.convert.cents_to_frequency(pitch)
@@ -144,16 +145,24 @@ def local_expected_value_from_bins(
     """Decode pitch using normal assumption around argmax from bin indices"""
     # Pad
     padded = torch.nn.functional.pad(
-        logits.squeeze(2),
+        logits.squeeze(-1),
         (window // 2, window // 2),
         value=-float('inf'))
 
+    # regular case of logits.shape == [128, 1440, 1] and bins [128, 1]
+    repeat_window = [1, window]
+
+    # make the algorithm work with logits.shape == [128, 6, 1440, 1] => the poly pitch net
+    if len(bins.shape) == 3:
+        repeat_window = [1, 1, window]
+        window_indxs = torch.arange(window, device=bins.device)[None][None]
+
     # Get indices
     indices = \
-        bins.repeat(1, window) + torch.arange(window, device=bins.device)[None]
+        bins.repeat(repeat_window) + torch.arange(window, device=bins.device)[None]
 
     # Get values in cents
     cents = penn.convert.bins_to_cents(torch.clip(indices - window // 2, 0))
 
     # Decode using local expected value
-    return expected_value(torch.gather(padded, 1, indices), cents)
+    return expected_value(torch.gather(padded, -1, indices), cents)

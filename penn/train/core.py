@@ -248,8 +248,6 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
             # Forward pass
             logits = model(audio.to(device))
 
-            breakpoint()
-
             # Update metrics
             metrics.update(
                 logits.to(device),

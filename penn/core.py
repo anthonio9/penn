@@ -455,8 +455,9 @@ def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
             torch.ceil)
 
         # Remove frequencies outside of allowable range
-        logits[:, :minidx] = -float('inf')
-        logits[:, maxidx:] = -float('inf')
+        # below works with shapes [128, 1440, 1] and [128, 6, 1440, 1]
+        logits[..., :minidx, :] = -float('inf')
+        logits[..., maxidx:, :] = -float('inf')
 
         # Decode pitch from logits
         if penn.DECODER == 'argmax':
