@@ -121,7 +121,7 @@ def expected_value(logits, cents):
     """Expected value computation from logits"""
     # Get local distributions
     if penn.LOSS == 'categorical_cross_entropy':
-        distributions = torch.nn.functional.softmax(logits, dim=-2)
+        distributions = torch.nn.functional.softmax(logits, dim=-1)
     elif penn.LOSS == 'binary_cross_entropy':
         distributions = torch.sigmoid(logits)
     else:
