@@ -193,7 +193,6 @@ class Metadata:
 
     def voiced_indices(self):
         """Retrieve the indices with voiced start frames"""
-        breakpoint()
         # Get voicing files
         files = [
             penn.CACHE_DIR / self.name / f'{stem}-voiced.npy'
