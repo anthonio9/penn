@@ -193,6 +193,7 @@ class Metadata:
 
     def voiced_indices(self):
         """Retrieve the indices with voiced start frames"""
+        breakpoint()
         # Get voicing files
         files = [
             penn.CACHE_DIR / self.name / f'{stem}-voiced.npy'
@@ -207,7 +208,12 @@ class Metadata:
 
             # Remove invalid center points
             if penn.NUM_TRAINING_FRAMES > 1:
-                voiced = voiced[:-(penn.NUM_TRAINING_FRAMES - 1)]
+                # ..., helps to make it work for poly pitch net
+                voiced = voiced[..., :-(penn.NUM_TRAINING_FRAMES - 1)]
+
+            # again, treat all the tracks as one
+            if len(voiced.shape) == 2:
+                voiced = voiced.sum(axis=0)
 
             # Update
             indices.extend(list(voiced.nonzero()[0] + offset))
