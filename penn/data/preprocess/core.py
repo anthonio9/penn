@@ -299,6 +299,8 @@ def gset():
                 pitch_arr.shape[-1] ==
                 voiced_arr.shape[-1])
 
+            assert np.logical_not(pitch_arr[voiced_arr] == 0).all()
+
             pitch_list_final.append(pitch_arr)
             voiced_list_final.append(voiced_arr)
 

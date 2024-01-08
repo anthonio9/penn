@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'ppn-gset-voiced-no-interp'
+CONFIG = 'ppn-gset-voiced'
 
 # gset only
 DATASETS = ['gset']
@@ -18,8 +18,6 @@ HOPSIZE = 64
 
 # use only the voiced frames
 VOICED_ONLY = True
-
-INTERPOLATE_UNVOICED = False
 
 STRING_INDEX = None
 
