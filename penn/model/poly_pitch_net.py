@@ -2,8 +2,25 @@ import torch
 
 import penn
 
-
 class PolyPitchNet(torch.nn.Sequential):
+    def __init__(self, layers):
+        super().__init__(*layers)
+
+    def forward(self, frames):
+        # shape=(batch, 1, penn.WINDOW_SIZE) =>
+        # shape=(batch, penn.PITCH_BINS, penn.NUM_TRAINING_FRAMES)
+        logits = super().forward(frames[:, :, 16:-15])
+
+        # [128, 8640, 1] => [128, 1440, 1] * 6
+        logits_chunks = logits.chunk(penn.PITCH_CATS, dim=-2)
+
+        # shape [128, 6, 1440, 1]
+        logits = torch.stack(logits_chunks, dim=1)
+
+        return logits
+
+
+class PolyPitchNet1(PolyPitchNet):
 
     def __init__(self):
         layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
@@ -15,23 +32,10 @@ class PolyPitchNet(torch.nn.Sequential):
             Block(128, 256, 35),
             Block(256, 512, 4),
             torch.nn.Conv1d(512, penn.PITCH_BINS * penn.PITCH_CATS, 4))
-        super().__init__(*layers)
+        super().__init__(layers)
 
-    def forward(self, frames):
-        # shape=(batch, 1, penn.WINDOW_SIZE) =>
-        # shape=(batch, penn.PITCH_BINS, penn.NUM_TRAINING_FRAMES)
-        breakpoint()
-        logits = super().forward(frames[:, :, 16:-15])
 
-        # [128, 8640, 1] => [128, 1440, 1] * 6
-        logits_chunks = logits.chunk(penn.PITCH_CATS, dim=-2)
-
-        # shape [128, 6, 1440, 1]
-        logits = torch.stack(logits_chunks, dim=1)
-
-        return logits
-
-class PolyPitchNet2(torch.nn.Sequential):
+class PolyPitchNet2(PolyPitchNet):
 
     def __init__(self):
         layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
@@ -44,23 +48,10 @@ class PolyPitchNet2(torch.nn.Sequential):
             Block(256, 512, 36, padding=16),
             Block(512, 1024, 5),
             torch.nn.Conv1d(1024, penn.PITCH_BINS * penn.PITCH_CATS, 5))
-        super().__init__(*layers)
-
-    def forward(self, frames):
-        # shape=(batch, 1, penn.WINDOW_SIZE) =>
-        # shape=(batch, penn.PITCH_BINS, penn.NUM_TRAINING_FRAMES)
-        logits = super().forward(frames[:, :, 16:-15])
-
-        # [128, 8640, 1] => [128, 1440, 1] * 6
-        logits_chunks = logits.chunk(penn.PITCH_CATS, dim=-2)
-
-        # shape [128, 6, 1440, 1]
-        logits = torch.stack(logits_chunks, dim=1)
-
-        return logits
+        super().__init__(layers)
 
 
-class PolyPitchNet3(torch.nn.Sequential):
+class PolyPitchNet3(PolyPitchNet):
 
     def __init__(self):
         layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
@@ -74,20 +65,24 @@ class PolyPitchNet3(torch.nn.Sequential):
             Block(512, 1024, 5, kernel_size=32, padding=8),
             torch.nn.Conv1d(1024, penn.PITCH_BINS * penn.PITCH_CATS, 5))
 
-        super().__init__(*layers)
+        super().__init__(layers)
 
-    def forward(self, frames):
-        # shape=(batch, 1, penn.WINDOW_SIZE) =>
-        # shape=(batch, penn.PITCH_BINS, penn.NUM_TRAINING_FRAMES)
-        logits = super().forward(frames[:, :, 16:-15])
 
-        # [128, 8640, 1] => [128, 1440, 1] * 6
-        logits_chunks = logits.chunk(penn.PITCH_CATS, dim=-2)
+class PolyPitchNet4(PolyPitchNet):
 
-        # shape [128, 6, 1440, 1]
-        logits = torch.stack(logits_chunks, dim=1)
+    def __init__(self):
+        layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
+        layers += (
+            Block(1, 256, 481, (2, 2), kernel_size=64, padding=16),
+            Block(256, 32, 225, (2, 2), kernel_size=128, padding=48),
+            Block(32, 32, 97, (2, 2), kernel_size=128, padding=48),
+            Block(32, 128, 66, kernel_size=64, padding=16),
+            Block(128, 256, 35, kernel_size=64, padding=16),
+            Block(256, 512, 20, kernel_size=64, padding=24),
+            Block(512, 1024, 5, kernel_size=64, padding=24),
+            torch.nn.Conv1d(1024, penn.PITCH_BINS * penn.PITCH_CATS, 5))
 
-        return logits
+        super().__init__(layers)
 
 
 class Block(torch.nn.Sequential):
