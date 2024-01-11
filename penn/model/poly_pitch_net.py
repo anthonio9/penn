@@ -96,8 +96,12 @@ class Block(torch.nn.Sequential):
         kernel_size=32,
         padding=0):
         layers = (
-            torch.nn.Conv1d(in_channels, out_channels, kernel_size, padding=padding),
-            torch.nn.ReLU())
+            torch.nn.Conv1d(in_channels, out_channels, kernel_size, padding=padding), )
+
+        if penn.RELU == 'leaky':
+            layers += (torch.nn.LeakyReLU(),)
+        else: 
+            layers += (torch.nn.ReLU(),)
 
         # Maybe add pooling
         if pooling is not None:

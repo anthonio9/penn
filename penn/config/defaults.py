@@ -136,6 +136,9 @@ MODEL = 'fcnf0'
 # Type of model normalization
 NORMALIZATION = 'layer'
 
+# of of the relu function 'leaky' or 'relu'
+RELU = 'relu'
+
 
 ###############################################################################
 # Training parameters
