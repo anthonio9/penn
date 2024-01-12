@@ -61,6 +61,8 @@ INTERPOLATE_UNVOICED = True
 # number of pitch categories, for guitar it's 6
 PITCH_CATS = 1
 
+# wheather to split GSET dataset into players
+GSET_SPLIT_PLAYERS = False
 
 ###############################################################################
 # Directories

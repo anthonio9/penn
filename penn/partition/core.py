@@ -1,5 +1,6 @@
 import json
 import random
+import numpy as np
 
 import penn
 
@@ -21,11 +22,16 @@ def dataset(name):
     stems = sorted([
         file.stem[:-6] for file in
         (penn.CACHE_DIR / name).glob('*-audio.npy')])
-    random.seed(penn.RANDOM_SEED)
-    random.shuffle(stems)
 
-    # Get split points
-    left, right = int(.70 * len(stems)), int(.85 * len(stems))
+    if 'gset' in name and penn.GSET_SPLIT_PLAYERS:
+        left, right = int((0.7 * 360 // 60) * 60), int((0.85 * 360 // 60) * 60)
+        print(f"GSET_SPLIT_PLAYERS, left: {left}, right: {right}")
+    else:
+        random.seed(penn.RANDOM_SEED)
+        random.shuffle(stems)
+
+        # Get split points
+        left, right = int(.70 * len(stems)), int(.85 * len(stems))
 
     # Perform partition
     partition = {

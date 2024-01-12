@@ -16,7 +16,7 @@ def parse_args():
         nargs='+',
         default=penn.DATASETS,
         help='The datasets to partition')
-    return parser.parse_args()
+    return parser.parse_known_args()[0]
 
 
 penn.partition.datasets(**vars(parse_args()))
