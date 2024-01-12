@@ -26,4 +26,4 @@ MODEL = 'ppn4'
 
 PITCH_CATS = 6
 
-DROPOUT = true
+DROPOUT = 0.2

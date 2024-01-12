@@ -28,4 +28,4 @@ PITCH_CATS = 6
 
 RELU = 'leaky'
 
-DROPOUT = True
+DROPOUT = 0.2
