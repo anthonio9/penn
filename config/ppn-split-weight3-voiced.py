@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'ppn-split-weight-drop-voiced'
+CONFIG = 'ppn-split-weight3-voiced'
 
 # gset only
 DATASETS = ['gset']
@@ -28,6 +28,4 @@ PITCH_CATS = 6
 
 GSET_SPLIT_PLAYERS = True
 
-WEIGHT_DECAY = 1e-3
-
-DROPOUT = 0.3
+WEIGHT_DECAY = 1e-2

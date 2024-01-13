@@ -35,6 +35,7 @@ def train(datasets, directory, gpu=None, use_wand=False):
         optimizer = torch.optim.Adam(model.parameters(),
                                      lr=penn.LEARNING_RATE,
                                      weight_decay=penn.WEIGHT_DECAY)
+        print(f"WEIGHT_DECAY: {penn.WEIGHT_DECAY}")
     else:
         optimizer = torch.optim.Adam(model.parameters(), lr=penn.LEARNING_RATE)
 
@@ -89,6 +90,8 @@ def train(datasets, directory, gpu=None, use_wand=False):
                 "config" : penn.CONFIG,
                 "datasets" : penn.DATASETS,
                 "hostname" : gethostname(),
+                "weight_decay" : penn.WEIGHT_DECAY,
+                "dropout" : penn.DROPOUT,
             })
 
 
