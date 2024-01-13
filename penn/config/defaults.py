@@ -179,3 +179,6 @@ RANDOM_SEED = 1234
 
 # Whether to only use voiced start frames
 VOICED_ONLY = False
+
+# Wheater to use the weight decay (L2 penalty) 
+WEIGHT_DECAY = None

@@ -31,7 +31,12 @@ def train(datasets, directory, gpu=None, use_wand=False):
     # Create optimizer #
     ####################
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=penn.LEARNING_RATE)
+    if penn.WEIGHT_DECAY is not None:
+        optimizer = torch.optim.Adam(model.parameters(),
+                                     lr=penn.LEARNING_RATE,
+                                     weight_decay=penn.WEIGHT_DECAY)
+    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=penn.LEARNING_RATE)
 
     ##############################
     # Maybe load from checkpoint #
@@ -73,6 +78,7 @@ def train(datasets, directory, gpu=None, use_wand=False):
         log_wandb = wandb.init(
             # Set the project where this run will be logged
             project="PENNbyAntoni",
+            name=f"{penn.CONFIG}",
 
             # Track hyperparameters and run metadata
             config={
