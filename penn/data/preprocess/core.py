@@ -249,16 +249,6 @@ def gset():
             output_directory / f'{stem}-audio.npy',
             audio.numpy().squeeze())
 
-        if penn.GSET_AUGUMENT is not None:
-            audio_numpy = audio.numpy()
-            for snr in penn.GSET_AUGUMENT:
-                audio_awgn = awgn_snr(audio_numpy, snr=snr)
-
-                # Save as numpy array for fast memory-mapped reads
-                np.save(
-                    output_directory / f'{stem}-noise{snr}-audio.npy',
-                    audio_awgn.squeeze())
-
         # Save audio for listening and evaluation
         torchaudio.save(
             output_directory / f'{stem}.wav',
@@ -326,6 +316,21 @@ def gset():
         # Save to cache
         np.save(output_directory / f'{stem}-pitch.npy', pitch)
         np.save(output_directory / f'{stem}-voiced.npy', voiced)
+
+        if penn.GSET_AUGUMENT is not None:
+            audio_numpy = audio.numpy()
+            for snr in penn.GSET_AUGUMENT:
+                audio_awgn = awgn_snr(audio_numpy, snr=snr)
+                noise_stem = f'snr{snr:02d}'
+
+                # Save as numpy array for fast memory-mapped reads
+                np.save(
+                    output_directory / f'{stem}-{noise_stem}-audio.npy',
+                    audio_awgn.squeeze())
+
+                # Save to cache
+                np.save(output_directory / f'{stem}-{noise_stem}-pitch.npy', pitch)
+                np.save(output_directory / f'{stem}-{noise_stem}-voiced.npy', voiced)
 
 
 ###############################################################################

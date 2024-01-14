@@ -44,6 +44,21 @@ def dataset(name):
         'valid': sorted(stems[left:right]),
         'test': sorted(stems[right:])}
 
+    if 'gset' in name and penn.GSET_AUGUMENT is not None:
+        # append only to the training partition
+        train_part = partition['train']
+        noise_stems = [f'snr{snr:02d}' for snr in penn.GSET_AUGUMENT]
+
+        # list for newly created noise file stems
+        noise_part = []
+
+        for stem in train_part:
+            noise_part.extend(
+                    [f"{stem}-{noise_stem}" for noise_stem in noise_stems])
+
+        train_part.extend(noise_part)
+        partition['train'] = sorted(train_part)
+
     # Write partition file
     with open(penn.PARTITION_DIR / f'{name}.json', 'w') as file:
         json.dump(partition, file, indent=4)
