@@ -64,6 +64,9 @@ PITCH_CATS = 1
 # wheather to split GSET dataset into players
 GSET_SPLIT_PLAYERS = False
 
+# wheather to augument GuitarSet with noise, None or a list of SNR levels
+GSET_AUGUMENT = None
+
 ###############################################################################
 # Directories
 ###############################################################################

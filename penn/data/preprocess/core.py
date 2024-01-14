@@ -249,6 +249,16 @@ def gset():
             output_directory / f'{stem}-audio.npy',
             audio.numpy().squeeze())
 
+        if penn.GSET_AUGUMENT is not None:
+            audio_numpy = audio.numpy()
+            for snr in penn.GSET_AUGUMENT:
+                audio_awgn = awgn_snr(audio_numpy, snr=snr)
+
+                # Save as numpy array for fast memory-mapped reads
+                np.save(
+                    output_directory / f'{stem}-noise{snr}-audio.npy',
+                    audio_awgn.squeeze())
+
         # Save audio for listening and evaluation
         torchaudio.save(
             output_directory / f'{stem}.wav',
@@ -321,6 +331,65 @@ def gset():
 ###############################################################################
 # Utilities
 ###############################################################################
+
+
+def awgn_snr(x: np.ndarray, snr: int):
+    """Add AWGN based on the given SNR value
+
+    Parameters
+    ----------
+    x : ndarray (N)
+        Signal in the time domain, 1-D numpy array of length N.
+    snr : int 
+        Target signal to noise raitio in dB.
+
+    Returns
+    -------
+    y : ndarray (N)
+        Input signal with the noise added.
+    """
+    # Calculate signal power and convert to dB 
+    x_avg_db = 10 * np.log10(np.mean(x ** 2))
+
+    # Calculate noise according to [2] then convert to watts
+    noise_avg_db = x_avg_db - snr
+    noise_avg_watts = 10 ** (noise_avg_db / 10)
+
+    # Generate an sample of white noise
+    mean_noise = 0
+    noise = np.random.normal(mean_noise, np.sqrt(noise_avg_watts), len(x))
+
+    # Noise up the original signal
+    y = x + noise.astype(x.dtype)
+
+    return y
+
+def awgn_pwr(x: np.ndarray, pwr: int):
+    """Add AWGN of given power to the input signal x
+
+    Parameters
+    ----------
+    x : ndarray (N)
+        Signal in the time domain, 1-D numpy array of length N.
+    pwr : int 
+        Power of the noise given in dB.
+
+    Returns
+    -------
+    y : ndarray (N)
+        Input signal with the noise added.
+    """
+    # Convert to linear Watt units
+    target_noise_watts = 10 ** (pwd / 10)
+
+    # Generate noise samples
+    mean_noise = 0
+    noise = np.random.normal(mean_noise, np.sqrt(target_noise_watts), len(x))
+
+    # Noise up the original signal (again) and plot
+    y = x + noise.astype(x.dtype)
+
+    return y
 
 
 def interpolate_unvoiced(pitch):

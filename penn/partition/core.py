@@ -19,9 +19,14 @@ def datasets(datasets):
 def dataset(name):
     """Partition dataset"""
     # Get dataset stems
-    stems = sorted([
-        file.stem[:-6] for file in
-        (penn.CACHE_DIR / name).glob('*-audio.npy')])
+    stems = [file.stem[:-6].split('-')[0] for file in
+             (penn.CACHE_DIR / name).glob('*-audio.npy')]
+
+    # Get the unique stems
+    stems = list(set(stems))
+
+    # Finally sort them
+    stems = sorted(stems)
 
     if 'gset' in name and penn.GSET_SPLIT_PLAYERS:
         left, right = int((0.7 * 360 // 60) * 60), int((0.85 * 360 // 60) * 60)
@@ -42,3 +47,4 @@ def dataset(name):
     # Write partition file
     with open(penn.PARTITION_DIR / f'{name}.json', 'w') as file:
         json.dump(partition, file, indent=4)
+
