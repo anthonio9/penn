@@ -20,10 +20,10 @@ def from_audio(
     logits = []
 
     # Change font size
-    matplotlib.rcParams.update({'font.size': 16})
+    matplotlib.rcParams.update({'font.size': 5})
 
     # Preprocess audio
-    for frames, _ in penn.preprocess(
+    for frames in penn.preprocess(
         audio,
         sample_rate,
         batch_size=penn.EVALUATION_BATCH_SIZE,
@@ -52,9 +52,19 @@ def from_audio(
 
     # Prepare for plotting
     distributions = distributions.cpu().squeeze(2).T
+    new_distributions = distributions
+
+    figsize=(18, 2)
+
+    # Prepare the ptich posteriorgram in case it's multipitch
+    if len(distributions.shape) == 4:
+        distr_chunk = torch.chunk(distributions, distributions.shape[-2], -2)
+        distr_chunk = [distr.squeeze(dim=-2).squeeze(dim=0) for distr in distr_chunk]
+        new_distributions = torch.vstack(distr_chunk)
+        figsize = (18, 10)
 
     # Setup figure
-    figure, axis = plt.subplots(figsize=(18, 2))
+    figure, axis = plt.subplots(figsize=figsize)
 
     # Make pretty
     axis.spines['top'].set_visible(False)
@@ -62,17 +72,32 @@ def from_audio(
     axis.spines['bottom'].set_visible(False)
     axis.spines['left'].set_visible(False)
     xticks = torch.arange(0, len(logits), int(penn.SAMPLE_RATE / penn.HOPSIZE))
-    xlabels = xticks // 100
+    xlabels = torch.round(xticks * (penn.HOPSIZE / penn.SAMPLE_RATE)).int()
     axis.get_xaxis().set_ticks(xticks.tolist(), xlabels.tolist())
+
     yticks = torch.linspace(0, penn.PITCH_BINS - 1, 5)
     ylabels = penn.convert.bins_to_frequency(yticks)
+
+    if len(distributions.shape) == 4:
+        no_poly_cats = distributions.shape[-2]
+        ylabels = penn.convert.bins_to_frequency(yticks)
+        ylabels_chunk = [ylabels for _ in range(no_poly_cats)]
+        ylabels = torch.cat(ylabels_chunk)
+        yticks = torch.linspace(0, 
+                                penn.PITCH_BINS * no_poly_cats - 1,
+                                5 * no_poly_cats)
+
     ylabels = ylabels.round().int().tolist()
     axis.get_yaxis().set_ticks(yticks, ylabels)
     axis.set_xlabel('Time (seconds)')
     axis.set_ylabel('Frequency (Hz)')
 
     # Plot pitch posteriorgram
-    axis.imshow(distributions, aspect='auto', origin='lower')
+    # if len(distributions.shape) == 4:
+    #     axis.imshow(new_distributions, extent=[0,100,0,1], aspect=80, origin='lower')
+    # else:
+    #     axis.imshow(new_distributions, aspect='auto', origin='lower')
+    axis.imshow(new_distributions, aspect='auto', origin='lower')
 
     return figure
 
