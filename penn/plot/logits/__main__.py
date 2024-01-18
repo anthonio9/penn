@@ -14,12 +14,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Create logits figure')
     parser.add_argument(
         '--audio_file',
-        required=True,
         type=Path,
         help='The audio file to plot the logits of')
     parser.add_argument(
         '--output_file',
-        required=True,
         type=Path,
         help='The jpg file to save the plot')
     parser.add_argument(

@@ -26,6 +26,8 @@ def train(datasets, directory, gpu=None, use_wand=False):
     torch.manual_seed(penn.RANDOM_SEED)
     train_loader = penn.data.loader(datasets, 'train')
     valid_loader = penn.data.loader(datasets, 'valid')
+    test_loader = penn.data.loader(datasets, 'test')
+    test_loader = iter(test_loader)
 
     ####################
     # Create optimizer #
@@ -159,6 +161,14 @@ def train(datasets, directory, gpu=None, use_wand=False):
                     optimizer,
                     step=step,
                     epoch=epoch)
+
+                fig = penn.plot.logits.from_model_and_testset(
+                        model=model,
+                        loader=test_loader,
+                        gpu=gpu)
+
+                if use_wand:
+                    log_wandb.log({"test_logits": wandb.Image(fig)})
 
             # Evaluate
             if step % penn.LOG_INTERVAL == 0:
