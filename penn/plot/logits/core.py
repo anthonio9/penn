@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 import penn
@@ -42,7 +43,7 @@ def logits_plotly(
 ###############################################################################
 
 
-def logits_matplotlib(logits, bins=None, figsize=(18, 10)):
+def logits_matplotlib(logits, bins=None, voiced=None, figsize=(18, 10)):
     import matplotlib
     import matplotlib.pyplot as plt
 
@@ -74,20 +75,20 @@ def logits_matplotlib(logits, bins=None, figsize=(18, 10)):
     axis.set_xlabel('Time (seconds)')
     axis.set_ylabel('Frequency (Hz)')
 
-    # if bins is not None:
-    #     bins = bins.squeeze(dim=0)
-    #     bins_chunks = bins.chunk(penn.PITCH_CATS, dim=0)
-    #     bins_chunks_hot = [
-    #             torch.nn.functional.one_hot(chunk, penn.PITCH_BINS).float().squeeze(0).T
-    #             for chunk in bins_chunks]
-    #     
-    #     bins = torch.vstack(bins_chunks_hot)
-    #     bins[bins == 0] = logits.min()
-    #     logits = torch.cat((logits, bins), dim=-1)
-    #
-    #     xticks = torch.cat((xticks, xticks))
-    #     xlabels = torch.cat((xlabels, xlabels))
-    #     axis.get_xaxis().set_ticks(xticks.tolist(), xlabels.tolist())
+    if bins is not None and voiced is not None:
+        nbins = bins.detach().cpu().numpy()
+        # nbins = penn.convert.bins_to_frequency(nbins)
+        nvoiced = voiced.detach().cpu().numpy()
+
+        nbins = nbins.squeeze().T
+        nvoiced = nvoiced.squeeze().T
+
+        offset = np.arange(0, penn.PITCH_CATS)*penn.PITCH_BINS
+        nbins += offset
+
+        nbins_masked = np.ma.MaskedArray(nbins, np.logical_not(nvoiced))
+
+        axis.plot(nbins_masked, 'r')
 
     # Plot pitch posteriorgram
     # if len(distributions.shape) == 4:
@@ -207,7 +208,7 @@ def from_model_and_testset(model, loader, gpu=None):
             new_distributions = torch.vstack(distr_chunk)
             figsize = (18, 10)
 
-        return logits_matplotlib(new_distributions, bins)
+        return logits_matplotlib(new_distributions, bins, voiced)
 
 
 def from_testset(checkpoint=None, gpu=None):
@@ -245,8 +246,6 @@ def from_file_to_file(audio_file=None, output_file=None, checkpoint=None, gpu=No
         figure = from_file(audio_file, checkpoint, gpu)
     else:
         figure = from_testset(checkpoint, gpu)
-
-    breakpoint()
 
     # Save to disk
     if output_file is not None:
