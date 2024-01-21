@@ -43,9 +43,41 @@ def logits_plotly(
 ###############################################################################
 
 
-def logits_matplotlib(logits, bins=None, voiced=None, figsize=(18, 10)):
+def process_logits(logits: torch.Tensor):
+    # Convert to distribution
+    # NOTE - We use softmax even if the loss is BCE for more comparable
+    #        visualization. Otherwise, the variance of models trained with
+    #        BCE looks erroneously lower.
+    distributions = torch.nn.functional.softmax(logits, dim=1)
+
+    # Take the log again for display
+    distributions = torch.log(distributions)
+    distributions[torch.isinf(distributions)] = \
+        distributions[~torch.isinf(distributions)].min()
+
+    # Prepare for plotting
+    distributions = distributions.cpu().squeeze(2).T
+    new_distributions = distributions
+
+    figsize=(18, 2)
+
+    # Prepare the ptich posteriorgram in case it's multipitch
+    if len(distributions.shape) == 4:
+        distr_chunk = torch.chunk(distributions, distributions.shape[-2], -2)
+        distr_chunk = [distr.squeeze(dim=-2).squeeze(dim=0) for distr in distr_chunk]
+        new_distributions = torch.vstack(distr_chunk)
+        figsize = (18, 10)
+
+    return new_distributions, figsize
+
+
+def logits_matplotlib(logits, bins=None, voiced=None):
     import matplotlib
     import matplotlib.pyplot as plt
+
+    distributions, figsize = process_logits(logits)
+
+    predicted_bins, pitch, periodicity = penn.postprocess(logits)
 
     # Change font size
     matplotlib.rcParams.update({'font.size': 5})
@@ -58,7 +90,7 @@ def logits_matplotlib(logits, bins=None, voiced=None, figsize=(18, 10)):
     axis.spines['right'].set_visible(False)
     axis.spines['bottom'].set_visible(False)
     axis.spines['left'].set_visible(False)
-    xticks = torch.arange(0, len(logits), int(penn.SAMPLE_RATE / penn.HOPSIZE))
+    xticks = torch.arange(0, len(distributions), int(penn.SAMPLE_RATE / penn.HOPSIZE))
     xlabels = torch.round(xticks * (penn.HOPSIZE / penn.SAMPLE_RATE)).int()
     axis.get_xaxis().set_ticks(xticks.tolist(), xlabels.tolist())
 
@@ -77,25 +109,30 @@ def logits_matplotlib(logits, bins=None, voiced=None, figsize=(18, 10)):
 
     if bins is not None and voiced is not None:
         nbins = bins.detach().cpu().numpy()
-        # nbins = penn.convert.bins_to_frequency(nbins)
         nvoiced = voiced.detach().cpu().numpy()
 
+        npredicted_bins = predicted_bins.detach().cpu().numpy()
+
         nbins = nbins.squeeze().T
+        npredicted_bins = npredicted_bins.squeeze().T
         nvoiced = nvoiced.squeeze().T
 
         offset = np.arange(0, penn.PITCH_CATS)*penn.PITCH_BINS
         nbins += offset
+        npredicted_bins += offset
 
         nbins_masked = np.ma.MaskedArray(nbins, np.logical_not(nvoiced))
+        npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced))
 
-        axis.plot(nbins_masked, 'r')
+        axis.plot(nbins_masked, 'r--', linewidth=0.5)
+        axis.plot(npredicted_bins_masked, 'b:', linewidth=0.5)
 
     # Plot pitch posteriorgram
     # if len(distributions.shape) == 4:
     #     axis.imshow(new_distributions, extent=[0,100,0,1], aspect=80, origin='lower')
     # else:
     #     axis.imshow(new_distributions, aspect='auto', origin='lower')
-    axis.imshow(logits, aspect='auto', origin='lower')
+    axis.imshow(distributions, aspect='auto', origin='lower')
 
     return figure
 
@@ -125,31 +162,7 @@ def from_audio(
     # Concatenate results
     logits = torch.cat(logits)
 
-    # Convert to distribution
-    # NOTE - We use softmax even if the loss is BCE for more comparable
-    #        visualization. Otherwise, the variance of models trained with
-    #        BCE looks erroneously lower.
-    distributions = torch.nn.functional.softmax(logits, dim=1)
-
-    # Take the log again for display
-    distributions = torch.log(distributions)
-    distributions[torch.isinf(distributions)] = \
-        distributions[~torch.isinf(distributions)].min()
-
-    # Prepare for plotting
-    distributions = distributions.cpu().squeeze(2).T
-    new_distributions = distributions
-
-    figsize=(18, 2)
-
-    # Prepare the ptich posteriorgram in case it's multipitch
-    if len(distributions.shape) == 4:
-        distr_chunk = torch.chunk(distributions, distributions.shape[-2], -2)
-        distr_chunk = [distr.squeeze(dim=-2).squeeze(dim=0) for distr in distr_chunk]
-        new_distributions = torch.vstack(distr_chunk)
-        figsize = (18, 10)
-
-    return logits_matplotlib(new_distributions, figsize)
+    return logits_matplotlib(logits)
 
 
 
@@ -191,24 +204,7 @@ def from_model_and_testset(model, loader, gpu=None):
 
         logits = torch.cat(logits)
 
-        distributions = torch.nn.functional.softmax(logits, dim=1)
-
-        # Take the log again for display
-        distributions = torch.log(distributions)
-        distributions[torch.isinf(distributions)] = \
-            distributions[~torch.isinf(distributions)].min()
-
-        # Prepare for plotting
-        distributions = distributions.cpu().squeeze(2).T
-
-        # Prepare the ptich posteriorgram in case it's multipitch
-        if len(distributions.shape) == 4:
-            distr_chunk = torch.chunk(distributions, distributions.shape[-2], -2)
-            distr_chunk = [distr.squeeze(dim=-2).squeeze(dim=0) for distr in distr_chunk]
-            new_distributions = torch.vstack(distr_chunk)
-            figsize = (18, 10)
-
-        return logits_matplotlib(new_distributions, bins, voiced)
+        return logits_matplotlib(logits, bins, voiced)
 
 
 def from_testset(checkpoint=None, gpu=None):
