@@ -2,7 +2,7 @@ from .core import *
 from .crepe import Crepe
 from .deepf0 import Deepf0
 from .fcnf0 import Fcnf0
-from .poly_pitch_net import PolyPitchNet1, PolyPitchNet2, PolyPitchNet3, PolyPitchNet4
+from .poly_pitch_net import PolyPitchNet1, PolyPitchNet2, PolyPitchNet3, PolyPitchNet4, PolyPitchNet5
 
 import penn
 
@@ -23,4 +23,6 @@ def Model(name=penn.MODEL):
         return PolyPitchNet3()
     if name == 'ppn4':
         return PolyPitchNet4()
+    if name == 'ppn5':
+        return PolyPitchNet5()
     raise ValueError(f'Model {name} is not defined')
