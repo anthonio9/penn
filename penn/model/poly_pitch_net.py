@@ -114,6 +114,36 @@ class PolyPitchNet5(PolyPitchNet):
         return logits
 
 
+class PolyPitchNet6(PolyPitchNet):
+
+    def __init__(self):
+        layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
+        layers += (
+            Block(1, 6, 993, kernel_size=15, padding=7),
+            Block(6, 256, 481, (2, 2)),
+            Block(256, 32, 225, (2, 2)),
+            Block(32, 32, 97, (2, 2)),
+            Block(32, 128, 66),
+            Block(128, 256, 35),
+            Block(256, 512, 6, kernel_size=30),
+            torch.nn.Conv1d(512, penn.PITCH_BINS, 1))
+
+        super().__init__(layers)
+
+    def forward(self, frames):
+        # shape=(batch, 1, penn.WINDOW_SIZE) =>
+        # shape=(batch, penn.PITCH_BINS, penn.NUM_TRAINING_FRAMES)
+        logits = torch.nn.Sequential.forward(self, frames[:, :, 16:-15])
+
+        # [128, 1440, 6] => [128, 6, 1440]
+        logits = logits.permute(0, 2, 1)
+        
+        # [128, 1440, 6] => [128, 6, 1440, 1]
+        logits = logits[..., None]
+
+        return logits
+
+
 class Block(torch.nn.Sequential):
 
     def __init__(
