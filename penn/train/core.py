@@ -314,38 +314,56 @@ def loss(logits, bins):
     """Compute loss function"""
     # Reshape inputs
     if len(logits.shape) == 4:
-        logits = logits.permute(0, 1, 3, 2).reshape(-1, penn.PITCH_BINS)
+        logits = logits.permute(0, 1, 3, 2)
+
+        if penn.LOSS_CHUNKED:
+            logits = logits.squeeze(-2)
+            logits_chunks = logits.chunk(penn.PITCH_CATS, dim=1)
+            logits_chunks = [chunk.squeeze(1) for chunk in logits_chunks]
+            logits = torch.stack(logits_chunks, dim=0)
+        else:
+            logits = logits.reshape(-1, penn.PITCH_BINS)
     else:
         logits = logits.permute(0, 2, 1).reshape(-1, penn.PITCH_BINS)
 
-    bins = bins.flatten()
+    def get_bins(bins):
+        bins = bins.flatten()
 
-    # Maybe blur target
-    if penn.GAUSSIAN_BLUR:
+        # Maybe blur target
+        if penn.GAUSSIAN_BLUR:
 
-        # Cache cents values to evaluate distributions at
-        if not hasattr(loss, 'cents'):
-            loss.cents = penn.convert.bins_to_cents(
-                torch.arange(penn.PITCH_BINS))[:, None]
+            # Cache cents values to evaluate distributions at
+            if not hasattr(loss, 'cents'):
+                loss.cents = penn.convert.bins_to_cents(
+                    torch.arange(penn.PITCH_BINS))[:, None]
 
-        # Ensure values are on correct device (no-op if devices are the same)
-        loss.cents = loss.cents.to(bins.device)
+            # Ensure values are on correct device (no-op if devices are the same)
+            loss.cents = loss.cents.to(bins.device)
 
-        # Create normal distributions
-        distributions = torch.distributions.Normal(
-            penn.convert.bins_to_cents(bins),
-            25)
+            # Create normal distributions
+            distributions = torch.distributions.Normal(
+                penn.convert.bins_to_cents(bins),
+                25)
 
-        # Sample normal distributions
-        bins = torch.exp(distributions.log_prob(loss.cents)).permute(1, 0)
+            # Sample normal distributions
+            bins = torch.exp(distributions.log_prob(loss.cents)).permute(1, 0)
 
-        # Normalize
-        bins = bins / (bins.max(dim=1, keepdims=True).values + 1e-8)
+            # Normalize
+            bins = bins / (bins.max(dim=1, keepdims=True).values + 1e-8)
 
-    else:
+        else:
 
-        # One-hot encoding
-        bins = torch.nn.functional.one_hot(bins, penn.PITCH_BINS).float()
+            # One-hot encoding
+            bins = torch.nn.functional.one_hot(bins, penn.PITCH_BINS).float()
+
+        return bins
+
+    if penn.LOSS_CHUNKED:
+        bins_chunks = bins.chunk(penn.PITCH_CATS, dim=1)
+        bins_chunks = [get_bins(chunk) for chunk in bins_chunks]
+        bins = torch.stack(bins_chunks)
+    else: 
+        bins = get_bins(bins)
 
     if penn.LOSS == 'binary_cross_entropy':
 

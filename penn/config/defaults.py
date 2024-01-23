@@ -168,6 +168,9 @@ LEARNING_RATE = 2e-4
 # Loss function
 LOSS = 'categorical_cross_entropy'
 
+# Loss chunk
+LOSS_CHUNKED = False
+
 # Number of training steps
 STEPS = 250000
 
