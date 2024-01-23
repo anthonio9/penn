@@ -71,7 +71,7 @@ def process_logits(logits: torch.Tensor):
     return new_distributions, figsize
 
 
-def logits_matplotlib(logits, bins=None, voiced=None):
+def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
     import matplotlib
     import matplotlib.pyplot as plt
 
@@ -106,6 +106,7 @@ def logits_matplotlib(logits, bins=None, voiced=None):
     axis.get_yaxis().set_ticks(yticks, ylabels)
     axis.set_xlabel('Time (seconds)')
     axis.set_ylabel('Frequency (Hz)')
+    axis.set_title(f"track: {stem}")
 
     if bins is not None and voiced is not None:
         nbins = bins.detach().cpu().numpy()
@@ -124,8 +125,8 @@ def logits_matplotlib(logits, bins=None, voiced=None):
         nbins_masked = np.ma.MaskedArray(nbins, np.logical_not(nvoiced))
         npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced))
 
-        axis.plot(nbins_masked, 'r--', linewidth=0.5)
-        axis.plot(npredicted_bins_masked, 'b:', linewidth=0.5)
+        axis.plot(nbins_masked, 'r--', linewidth=2)
+        axis.plot(npredicted_bins_masked, 'b:', linewidth=2)
 
     # Plot pitch posteriorgram
     # if len(distributions.shape) == 4:
@@ -204,7 +205,7 @@ def from_model_and_testset(model, loader, gpu=None):
 
         logits = torch.cat(logits)
 
-        return logits_matplotlib(logits, bins, voiced)
+        return logits_matplotlib(logits, bins, voiced, stem)
 
 
 def from_testset(checkpoint=None, gpu=None):
@@ -242,6 +243,8 @@ def from_file_to_file(audio_file=None, output_file=None, checkpoint=None, gpu=No
         figure = from_file(audio_file, checkpoint, gpu)
     else:
         figure = from_testset(checkpoint, gpu)
+
+    breakpoint()
 
     # Save to disk
     if output_file is not None:
