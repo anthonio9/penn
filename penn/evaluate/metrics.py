@@ -27,13 +27,19 @@ class Metrics:
         self.pitch_metrics = PitchMetrics()
 
     def __call__(self):
-        return (
-            {
-                'accuracy': self.accuracy(),
-                'loss': self.loss()
-            } |
-            self.f1() |
-            self.pitch_metrics())
+        if penn.LOSS_MULTI_HOT:
+            return (
+                {
+                    'loss': self.loss()
+                })
+        else:
+            return (
+                {
+                    'accuracy': self.accuracy(),
+                    'loss': self.loss()
+                } |
+                self.f1() |
+                self.pitch_metrics())
 
     def update(self, logits, bins, target, voiced):
         # Detach from graph
@@ -42,18 +48,19 @@ class Metrics:
         # Update loss
         self.loss.update(logits[:, :penn.PITCH_BINS], bins.T)
 
-        # Decode bins, pitch, and periodicity
-        with torchutil.time.context('decode'):
-            predicted, pitch, periodicity = penn.postprocess(logits)
+        if not penn.LOSS_MULTI_HOT:
+            # Decode bins, pitch, and periodicity
+            with torchutil.time.context('decode'):
+                predicted, pitch, periodicity = penn.postprocess(logits)
 
-        # Update bin accuracy
-        self.accuracy.update(predicted[voiced], bins[voiced])
+            # Update bin accuracy
+            self.accuracy.update(predicted[voiced], bins[voiced])
 
-        # Update pitch metrics
-        self.pitch_metrics.update(pitch, target, voiced)
+            # Update pitch metrics
+            self.pitch_metrics.update(pitch, target, voiced)
 
-        # Update periodicity metrics
-        self.f1.update(periodicity, voiced)
+            # Update periodicity metrics
+            self.f1.update(periodicity, voiced)
 
     def reset(self):
         self.accuracy.reset()

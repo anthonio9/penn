@@ -48,7 +48,11 @@ def process_logits(logits: torch.Tensor):
     # NOTE - We use softmax even if the loss is BCE for more comparable
     #        visualization. Otherwise, the variance of models trained with
     #        BCE looks erroneously lower.
-    distributions = torch.nn.functional.softmax(logits, dim=1)
+
+    if penn.LOSS_MULTI_HOT:
+        distributions = torch.nn.functional.sigmoid(logits)
+    else:
+        distributions = torch.nn.functional.softmax(logits, dim=1)
 
     # Take the log again for display
     distributions = torch.log(distributions)
@@ -77,7 +81,8 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
 
     distributions, figsize = process_logits(logits)
 
-    predicted_bins, pitch, periodicity = penn.postprocess(logits)
+    if not penn.LOSS_MULTI_HOT:
+        predicted_bins, pitch, periodicity = penn.postprocess(logits)
 
     # Change font size
     matplotlib.rcParams.update({'font.size': 5})
@@ -108,31 +113,30 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
     axis.set_ylabel('Frequency (Hz)')
     axis.set_title(f"track: {stem}")
 
-    if bins is not None and voiced is not None:
+    if bins is not None and voiced is not None and not penn.LOSS_MULTI_HOT:
         nbins = bins.detach().cpu().numpy()
         nvoiced = voiced.detach().cpu().numpy()
 
-        npredicted_bins = predicted_bins.detach().cpu().numpy()
-
         nbins = nbins.squeeze().T
-        npredicted_bins = npredicted_bins.squeeze().T
         nvoiced = nvoiced.squeeze().T
 
         offset = np.arange(0, penn.PITCH_CATS)*penn.PITCH_BINS
+
         nbins += offset
-        npredicted_bins += offset
 
         nbins_masked = np.ma.MaskedArray(nbins, np.logical_not(nvoiced))
-        npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced))
 
         axis.plot(nbins_masked, 'r--', linewidth=2)
-        axis.plot(npredicted_bins_masked, 'b:', linewidth=2)
 
-    # Plot pitch posteriorgram
-    # if len(distributions.shape) == 4:
-    #     axis.imshow(new_distributions, extent=[0,100,0,1], aspect=80, origin='lower')
-    # else:
-    #     axis.imshow(new_distributions, aspect='auto', origin='lower')
+        if predicted_bins is not None:
+            npredicted_bins = predicted_bins.detach().cpu().numpy()
+            npredicted_bins = npredicted_bins.squeeze().T
+
+            npredicted_bins += offset
+            npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced))
+
+            axis.plot(npredicted_bins_masked, 'b:', linewidth=2)
+
     axis.imshow(distributions, aspect='auto', origin='lower')
 
     return figure
@@ -243,8 +247,6 @@ def from_file_to_file(audio_file=None, output_file=None, checkpoint=None, gpu=No
         figure = from_file(audio_file, checkpoint, gpu)
     else:
         figure = from_testset(checkpoint, gpu)
-
-    breakpoint()
 
     # Save to disk
     if output_file is not None:

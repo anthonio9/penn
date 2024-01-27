@@ -267,7 +267,7 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
             # Forward pass
             logits = model(audio.to(device))
 
-            if len(logits.shape) == 4:
+            if len(logits.shape) == 4 or penn.LOSS_MULTI_HOT:
                 binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
                 pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
                 voicedT = voiced.permute(*torch.arange(voiced.ndim - 1, -1, -1))
@@ -302,7 +302,7 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
     # Write to tensorboard
     torchutil.tensorboard.update(directory, step, scalars=scalars)
 
-    return scalars[f'accuracy/{condition}']
+    return scalars[f'loss/{condition}']
 
 
 ###############################################################################
@@ -362,8 +362,21 @@ def loss(logits, bins):
         bins_chunks = bins.chunk(penn.PITCH_CATS, dim=1)
         bins_chunks = [get_bins(chunk) for chunk in bins_chunks]
         bins = torch.stack(bins_chunks)
+
+    elif penn.LOSS_MULTI_HOT:
+        bins_chunks = bins.chunk(penn.PITCH_CATS, dim=1)
+        bins_chunks = [get_bins(chunk) for chunk in bins_chunks]
+        bins = torch.stack(bins_chunks)
+
+        # combine all one-hot vectors into a single multi-hot vector
+        bins = torch.sum(bins, dim=0)
+
+        # it may happen that two strings are playing the same note, in that case interpret it as a single note
+        bins[bins > 1] = 1
+
     else: 
         bins = get_bins(bins)
+
 
     if penn.LOSS == 'binary_cross_entropy':
 

@@ -1,0 +1,33 @@
+Try dropout and different regularization techniques.
+
+== Divide the dataset (important)
+
+* division for train and validation sets based on the guitar players
+
+== Regularization techniques
+
+* do the parameters to below techniques manually (important)
+* weight regularization, weight penalty, comes out of the box with Adam optimizer
+* L1, L2 regularization
+* ADd noise to inputs, gaussian noise of the same shape 
+
+== Hyperparameters tuning and the three sets (train, test, valid)
+
+
+25.01.2024
+
+== 1st experiment
+
+multi hot piano, one array of 1440 instead of 6.
+
+* use sigmoid istead of softmax
+* use binary cross entropy instead of categorical cross entropy
+
+set a threshold for the pitch recognition.
+
+== 2nd experiment
+
+take inspiration from here: https://arxiv.org/abs/1802.08435
+
+* use 60 discrete values of MIDI per each string
+* use a vector 1-60 for estimating the deviation

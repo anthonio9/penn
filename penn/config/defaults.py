@@ -171,6 +171,10 @@ LOSS = 'categorical_cross_entropy'
 # Loss chunk
 LOSS_CHUNKED = False
 
+# Loss mutli-hot
+
+LOSS_MULTI_HOT = False
+
 # Number of training steps
 STEPS = 250000
 
@@ -188,3 +192,5 @@ VOICED_ONLY = False
 
 # Wheater to use the weight decay (L2 penalty) 
 WEIGHT_DECAY = None
+
+EVALUATE = True
