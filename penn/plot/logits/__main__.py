@@ -28,6 +28,10 @@ def parse_args():
         '--gpu',
         type=int,
         help='The index of the GPU to use for inference')
+    parser.add_argument(
+        '--iters',
+        type=int,
+        help='Number of dummy iterations on the loader before extracting the data')
     return parser.parse_known_args()[0]
 
 
