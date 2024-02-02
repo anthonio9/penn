@@ -10,6 +10,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 
+MIDI_TIME = 0
+MIDI_DURATION = 1
+MIDI_VALUE = 2
+
+
 def extract_pitch(jams_track):
     # Extract all of the pitch annotations
     pitch_data_slices = jams_track.annotations[penn.data.preprocess.JAMS_PITCH_HZ]
@@ -41,6 +46,43 @@ def extract_pitch(jams_track):
 
 def extract_notes(jams_track):
     pass
+
+
+def extract_midi(jams_track):
+    midi_data_slices = jams_track.annotations[penn.data.preprocess.JAMS_NOTE_MIDI]
+
+    midi_dict = {}
+
+    for slice in midi_data_slices:
+        string_indx = slice.annotation_metadata[penn.data.preprocess.JAMS_STRING_IDX]
+        midi_slice_dict = midi_dict[string_indx] = {}
+
+        midi_list = []
+        time_list = []
+
+        for midi_note in slice.data:
+            midi = midi_note[MIDI_VALUE] 
+            time = midi_note[MIDI_TIME]
+            duration = midi_note[MIDI_DURATION]
+
+            # put None in between the notes
+            if len(midi_list) != 0:
+                time_none = (time_list[-1] + time) / 2
+                midi_list.append(None)
+                time_list.append(time_none)
+
+            # starting timestamp
+            midi_list.append(penn.convert.midi_to_frequency(midi))
+            time_list.append(time)
+
+            # ending timestamp
+            midi_list.append(penn.convert.midi_to_frequency(midi))
+            time_list.append(time + duration)
+
+        midi_slice_dict["pitch"] = np.array(midi_list)
+        midi_slice_dict["time"] = np.array(time_list)
+
+    return midi_dict
 
 
 def extract_spectrogram(audio, sr, window_length, hop_length):
@@ -75,7 +117,7 @@ def pitch_with_plotly(pitch_dict):
     fig.show()
 
 
-def pitch_stft_with_plotly(pitch_dict, audio_file):
+def pitch_stft_with_plotly(pitch_dict, audio_file, return_fig=False):
     audio, sr = torchaudio.load(audio_file)
     audio = audio.cpu().numpy()
     stft, freqs, times = extract_spectrogram(audio,
@@ -85,7 +127,7 @@ def pitch_stft_with_plotly(pitch_dict, audio_file):
 
     fig = px.imshow(
             stft, 
-            color_continuous_scale=px.colors.continuous.Cividis_r,
+            color_continuous_scale="aggrnyl",
             x=times,
             y=freqs,
             aspect='auto',
@@ -117,7 +159,23 @@ def pitch_stft_with_plotly(pitch_dict, audio_file):
     ymin -= offset
 
     fig.update_yaxes(range=[ymin, ymax], autorange=False)
+
+    if return_fig:
+        return fig
         
+    fig.show()
+    
+
+def pitch_midi_stft_with_plotly(pitch_dict, midi_dict, audio_file):
+    fig = pitch_stft_with_plotly(pitch_dict, audio_file, True)
+
+    for no_slice, midi_slice in midi_dict.items():
+        fig = fig.add_trace(go.Scatter(
+            x = midi_slice["time"],
+            y = midi_slice["pitch"],
+            mode="lines+markers",
+            marker=dict (size=3)))
+
     fig.show()
 
 
@@ -167,8 +225,10 @@ def from_data(data_dir, file_stem):
 
     jams_track = jams.load(str(pitch_file))
     pitch_dict = extract_pitch(jams_track)
+    midi_dict = extract_midi(jams_track)
     df = pd.read_csv('https://raw.githubusercontent.com/jonmmease/plotly_ipywidget_notebooks/master/notebooks/data/cars/cars.csv')
 
     # pitch_with_plotly(pitch_dict)
     # edit_with_plotly(pitch_dict)
-    pitch_stft_with_plotly(pitch_dict, audio_file)
+    # pitch_stft_with_plotly(pitch_dict, audio_file)
+    pitch_midi_stft_with_plotly(pitch_dict, midi_dict, audio_file)

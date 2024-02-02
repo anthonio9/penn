@@ -46,6 +46,11 @@ def frequency_to_samples(frequency, sample_rate=penn.SAMPLE_RATE):
     return sample_rate / frequency
 
 
+def midi_to_frequency(midi):
+    """Convert midi notes to frequency in Hz"""
+    return 440 * 2 ** ((midi - 69) / 12)
+
+
 ###############################################################################
 # Time conversions
 ###############################################################################
