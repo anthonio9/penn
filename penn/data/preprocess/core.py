@@ -274,7 +274,7 @@ def gset():
 
         # FOR sampling rates like 11025, 22050, 44100, resampling isn't necessary
         if GSET_SAMPLE_RATE / penn.SAMPLE_RATE % 1 != 0:
-            printf("Resampling to penn.SAMPLE_RATE")
+            print("Resampling to penn.SAMPLE_RATE")
 
             pitch_list = np.vsplit(pitch, pitch.shape[0])
             pitch_list_final = []
@@ -316,6 +316,13 @@ def gset():
 
             if voiced.shape[0] == 1:
                 voiced = voiced[0, :]
+        else:
+            overload = np.abs(audio.shape[-1] // penn.HOPSIZE - pitch.shape[-1])
+            # this is a bad, ugly hack, but well, it is what it is, has to be enabled if resampling isn't enabled
+            pitch = pitch[..., :-overload]
+            voiced = voiced[..., :-overload]
+
+        assert pitch.shape[-1] == audio.shape[-1] // penn.HOPSIZE
 
         # Save to cache
         np.save(output_directory / f'{stem}-pitch.npy', pitch)
