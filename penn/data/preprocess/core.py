@@ -272,46 +272,50 @@ def gset():
             unvoiced = pitch == 0
             voiced = ~unvoiced
 
-        pitch_list = np.vsplit(pitch, pitch.shape[0])
-        pitch_list_final = []
+        # FOR sampling rates like 11025, 22050, 44100, resampling isn't necessary
+        if GSET_SAMPLE_RATE / penn.SAMPLE_RATE % 1 != 0:
+            printf("Resampling to penn.SAMPLE_RATE")
 
-        voiced_list = np.vsplit(voiced, voiced.shape[0])
-        voiced_list_final = []
+            pitch_list = np.vsplit(pitch, pitch.shape[0])
+            pitch_list_final = []
 
-        for pitch_arr, voiced_arr in zip(pitch_list, voiced_list):
-            # Get target number of frames
-            frames = penn.convert.samples_to_frames(audio.shape[-1])
+            voiced_list = np.vsplit(voiced, voiced.shape[0])
+            voiced_list_final = []
 
-            pitch_arr = pitch_arr[0, :]
-            voiced_arr = voiced_arr[0, :]
+            for pitch_arr, voiced_arr in zip(pitch_list, voiced_list):
+                # Get target number of frames
+                frames = penn.convert.samples_to_frames(audio.shape[-1])
 
-            # Linearly interpolate to target number of frames
-            new_times = penn.HOPSIZE_SECONDS * np.arange(0, frames)
-            new_times += penn.HOPSIZE_SECONDS / 2.
-            pitch_arr = 2. ** np.interp(new_times, times, np.log2(pitch_arr))
+                pitch_arr = pitch_arr[0, :]
+                voiced_arr = voiced_arr[0, :]
 
-            # Linearly interpolate voiced_arr/unvoiced_arr tokens
-            voiced_arr = np.interp(new_times, times, voiced_arr) > .5
+                # Linearly interpolate to target number of frames
+                new_times = penn.HOPSIZE_SECONDS * np.arange(0, frames)
+                new_times += penn.HOPSIZE_SECONDS / 2.
+                pitch_arr = 2. ** np.interp(new_times, times, np.log2(pitch_arr))
 
-            # Check shapes
-            assert (
-                penn.convert.samples_to_frames(audio.shape[-1]) ==
-                pitch_arr.shape[-1] ==
-                voiced_arr.shape[-1])
+                # Linearly interpolate voiced_arr/unvoiced_arr tokens
+                voiced_arr = np.interp(new_times, times, voiced_arr) > .5
 
-            assert np.logical_not(pitch_arr[voiced_arr] == 0).all()
+                # Check shapes
+                assert (
+                    penn.convert.samples_to_frames(audio.shape[-1]) ==
+                    pitch_arr.shape[-1] ==
+                    voiced_arr.shape[-1])
 
-            pitch_list_final.append(pitch_arr)
-            voiced_list_final.append(voiced_arr)
+                assert np.logical_not(pitch_arr[voiced_arr] == 0).all()
 
-        pitch = np.vstack(pitch_list_final)
-        voiced = np.vstack(voiced_list_final)
+                pitch_list_final.append(pitch_arr)
+                voiced_list_final.append(voiced_arr)
 
-        if pitch.shape[0] == 1:
-            pitch = pitch[0, :]
+            pitch = np.vstack(pitch_list_final)
+            voiced = np.vstack(voiced_list_final)
 
-        if voiced.shape[0] == 1:
-            voiced = voiced[0, :]
+            if pitch.shape[0] == 1:
+                pitch = pitch[0, :]
+
+            if voiced.shape[0] == 1:
+                voiced = voiced[0, :]
 
         # Save to cache
         np.save(output_directory / f'{stem}-pitch.npy', pitch)
@@ -559,13 +563,11 @@ def extract_pitch_array_jams(jam: jams.JAMS, track, uniform=True) -> Tuple[np.nd
             freq = np.array([pitch.value['frequency']])
 
             # Don't keep track of zero or unvoiced frequencies
-            if np.sum(freq) == 0 or not pitch.value['voiced']:
-                freq = np.zeros(1)
-
-            # Append the observation time
-            entry_times = np.append(entry_times, pitch.time)
-            # Append the frequency
-            slice_pitch_list.append(freq)
+            if np.sum(freq) != 0 and pitch.value['voiced']:
+                # Append the observation time
+                entry_times = np.append(entry_times, pitch.time)
+                # Append the frequency
+                slice_pitch_list.append(freq)
 
         # Sort the pitch list before resampling just in case it is not already sorted
         entry_times, slice_pitch_array = sort_pitch_list(entry_times, slice_pitch_list)
