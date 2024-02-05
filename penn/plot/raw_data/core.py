@@ -226,8 +226,8 @@ def from_data(data_dir, file_stem):
     jams_track = jams.load(str(pitch_file))
     pitch_dict = extract_pitch(jams_track)
     midi_dict = extract_midi(jams_track)
-    df = pd.read_csv('https://raw.githubusercontent.com/jonmmease/plotly_ipywidget_notebooks/master/notebooks/data/cars/cars.csv')
 
+    penn.data.preprocess.jams_to_notes(jams_track)
     # pitch_with_plotly(pitch_dict)
     # edit_with_plotly(pitch_dict)
     # pitch_stft_with_plotly(pitch_dict, audio_file)

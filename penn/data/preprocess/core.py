@@ -39,6 +39,10 @@ JAMS_PITCH_HZ = 'pitch_contour'
 JAMS_STRING_IDX = 'data_source'
 JAMS_METADATA = 'file_metadata'
 
+JAMS_FREQ = "frequency"
+JAMS_INDEX = "index"
+JAMS_TIMES = "times"
+
 ###############################################################################
 # Preprocess datasets
 ###############################################################################
@@ -597,3 +601,63 @@ def extract_pitch_array_jams(jam: jams.JAMS, track, uniform=True) -> Tuple[np.nd
     pitch_array = np.vstack(pitch_list)
 
     return pitch_array, time_steps_array
+
+
+def jams_to_notes(jam: jams.JObject):
+    """
+    Parameters:
+        jams object 
+            jams object containing all the information about a track
+    Returns:
+        notes dict 
+            dictionary of notes and their timestamps segregated into strings
+            dict {list [list]}
+    """
+    notes = {}
+
+    # Extract all of the pitch annotations
+    pitch_data_slices = jam.annotations[JAMS_PITCH_HZ]
+
+    # Obtain the number of annotations
+    stack_size = len(pitch_data_slices)
+
+    # Loop through the slices of the stack
+    for slc in range(stack_size):
+        # Extract the pitch list pertaining to this slice
+        slice_pitches = pitch_data_slices[slc]
+
+        # Extract the string label for this slice
+        string = slice_pitches.annotation_metadata[JAMS_STRING_IDX]
+        
+        try: 
+            last_index = slice_pitches.data[-1].value[JAMS_INDEX] + 1
+            # prepare empty lists for the notes
+            note_list = [[] for i in range(last_index)]
+            notes_times_list = [[] for i in range(last_index)]
+
+        except IndexError:
+            note_list = []
+            notes_times_list = []
+
+        for pitch in slice_pitches:
+            # Extract the pitch
+            freq = np.array([pitch.value['frequency']])
+
+            # Don't keep track of zero or unvoiced frequencies
+            if np.sum(freq) != 0 and pitch.value['voiced']:
+                note_list[pitch.value[JAMS_INDEX]].append(pitch.value[JAMS_FREQ])
+                notes_times_list[pitch.value[JAMS_INDEX]].append(pitch.time)
+
+        notes[int(string)] = {
+                JAMS_FREQ : note_list,
+                JAMS_TIMES : notes_times_list}
+
+    return notes
+
+
+def notes_to_pitch_array():
+    pass
+
+
+def remove_overhangs(notes_dict: dict):
+    pass
