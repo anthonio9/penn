@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 import penn
 
@@ -20,7 +21,13 @@ def bins_to_frequency(bins):
 
 def cents_to_bins(cents, quantize_fn=torch.floor):
     """Converts cents to pitch bins"""
-    bins = quantize_fn(cents / penn.CENTS_PER_BIN).long()
+    bins = quantize_fn(cents / penn.CENTS_PER_BIN)
+
+    if type(bins) is np.ndarray:
+        bins = bins.astype(np.int64)
+    else:
+        bins = bins.long()
+
     bins[bins < 0] = 0
     bins[bins >= penn.PITCH_BINS] = penn.PITCH_BINS - 1
     return bins
@@ -38,7 +45,10 @@ def frequency_to_bins(frequency, quantize_fn=torch.floor):
 
 def frequency_to_cents(frequency):
     """Convert frequency in Hz to cents"""
-    return penn.OCTAVE * torch.log2(frequency / penn.FMIN)
+    if type(frequency) is np.ndarray:
+        return penn.OCTAVE * np.log2(frequency / penn.FMIN)
+    else:
+        return penn.OCTAVE * torch.log2(frequency / penn.FMIN)
 
 
 def frequency_to_samples(frequency, sample_rate=penn.SAMPLE_RATE):

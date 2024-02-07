@@ -227,7 +227,9 @@ def from_data(data_dir, file_stem):
     pitch_dict = extract_pitch(jams_track)
     midi_dict = extract_midi(jams_track)
 
-    penn.data.preprocess.jams_to_notes(jams_track)
+    notes_dict = penn.data.preprocess.jams_to_notes(jams_track)
+    removed_overhangs = penn.data.preprocess.remove_overhangs(notes_dict)
+    pitch_dict = penn.data.preprocess.notes_dict_to_pitch_dict(removed_overhangs)
     # pitch_with_plotly(pitch_dict)
     # edit_with_plotly(pitch_dict)
     # pitch_stft_with_plotly(pitch_dict, audio_file)

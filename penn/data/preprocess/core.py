@@ -611,7 +611,7 @@ def jams_to_notes(jam: jams.JObject):
     Returns:
         notes dict 
             dictionary of notes and their timestamps segregated into strings
-            dict {list [list]}
+            dict {dict {list}}
     """
     notes = {}
 
@@ -655,9 +655,53 @@ def jams_to_notes(jam: jams.JObject):
     return notes
 
 
-def notes_to_pitch_array():
+def notes_dict_to_pitch_dict(notes_dict: dict):
+    pitch_dict = {}
+
+    for slc, notes in notes_dict.items():
+        freq_list = []
+        time_list = []
+
+        pitch_slice_dict = pitch_dict[int(slc)] = {}
+
+        for note, timestamp in zip(notes[JAMS_FREQ], notes[JAMS_TIMES]):
+            # notes and timestamp are really lists and not single values
+            freq_list.extend(note)
+            time_list.extend(timestamp)
+
+        pitch_slice_dict["pitch"] = np.array(freq_list)
+        pitch_slice_dict["time"] = np.array(time_list)
+
+    return pitch_dict
+
+
+def notes_dict_to_pitch_array(notes_dit: dict):
     pass
 
 
 def remove_overhangs(notes_dict: dict):
-    pass
+    for slc, notes in notes_dict.items():
+
+        # iterate over the notes and remove overhangs
+        for i, (note, timestamp) in enumerate(zip(notes[JAMS_FREQ], notes[JAMS_TIMES])):
+            # notes and timestamp are really lists and not single values
+            # convert note and timestamp to np arrays
+            note = np.array(note)
+            timestamp = np.array(timestamp)
+
+            no_pitches = len(note)
+            last10 = no_pitches - (no_pitches // 5)
+            note_bins = penn.convert.frequency_to_bins(note, quantize_fn=np.floor)
+            average90 = np.mean(note_bins[:last10])
+
+            notes_under_threshold = np.abs(note_bins[last10:] - average90) <= 15
+            note_cut = note[last10:]
+            note_cut = note_cut[notes_under_threshold]
+
+            time_cut = timestamp[last10:]
+            time_cut = time_cut[notes_under_threshold]
+
+            notes[JAMS_FREQ][i] = np.append(note[:last10], note_cut)
+            notes[JAMS_TIMES][i] = np.append(timestamp[:last10], time_cut)
+
+    return notes_dict
