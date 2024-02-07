@@ -461,7 +461,6 @@ def sort_pitch_list(times: np.ndarray, pitch_list: list) -> Tuple[np.ndarray, li
       Array of pitches corresponding to notes
       N - number of pitch observations (frames), sorted by time
     """
-
     # Obtain the indices corresponding to the sorted times
     sort_order = list(np.argsort(times))
 
@@ -545,6 +544,14 @@ def extract_pitch_array_jams(jam: jams.JAMS, track, uniform=True) -> Tuple[np.nd
       time_steps array is of shape (T, )
       S - number of strings, T - number of time steps
     """
+    if penn.REMOVE_OVERHANGS:
+        notes_dict = jams_to_notes(jam)
+        notes_removed_overhangs = remove_overhangs(notes_dict)
+        pitch_array, time_steps_array = notes_dict_to_pitch_array(
+                notes_removed_overhangs,
+                jam.file_metadata.duration)
+        return pitch_array, time_steps_array
+
     # Extract all of the pitch annotations
     pitch_data_slices = jam.annotations[JAMS_PITCH_HZ]
 
@@ -675,11 +682,49 @@ def notes_dict_to_pitch_dict(notes_dict: dict):
     return pitch_dict
 
 
-def notes_dict_to_pitch_array(notes_dit: dict):
-    pass
+def notes_dict_to_pitch_array(notes_dict: dict, duration: int):
+    pitch_dict = notes_dict_to_pitch_dict(notes_dict)
+
+    pitch_list = []
+    times_list = []
+
+    for slc, slice_dict in pitch_dict.items():
+        # extract pitch and time array from the pitch dict and prepare them to match the type required by sorting
+        pitch_slice_list = slice_dict["pitch"].tolist()
+        pitch_slice_list = [np.array([pitch]) for pitch in pitch_slice_list]
+        times = slice_dict["time"]
+
+        entry_times, slice_pitch_array = sort_pitch_list(times, pitch_slice_list)
+
+        # Align the pitch list with a uniform time grid
+        entry_times, slice_pitch_array = time_series_to_uniform(
+                times=entry_times,
+                values=slice_pitch_array,
+                hop_length=penn.data.preprocess.GSET_HOPSIZE_SECONDS,
+                duration=duration)
+
+        times_list.append(entry_times)
+        pitch_list.append(slice_pitch_array.T)
+
+    # assert all entry times arrays are of the same lenght
+    time_lenghts = [len(times) for times in times_list]
+    assert time_lenghts[0] == sum(time_lenghts) / len(time_lenghts)
+
+    time_steps_array = times_list[0]
+    pitch_array = np.vstack(pitch_list)
+
+    return pitch_array, time_steps_array
 
 
-def remove_overhangs(notes_dict: dict):
+def remove_overhangs(notes_dict: dict,
+                     divider:int=penn.REMOVE_OVERHANGS_DIVIDER,
+                     threshold:int=penn.REMOVE_OVERHANGS_THRESHOLD):
+    if divider is None:
+        divider = 5
+
+    if threshold is None:
+        threshold = 15
+
     for slc, notes in notes_dict.items():
 
         # iterate over the notes and remove overhangs
@@ -690,11 +735,11 @@ def remove_overhangs(notes_dict: dict):
             timestamp = np.array(timestamp)
 
             no_pitches = len(note)
-            last10 = no_pitches - (no_pitches // 5)
+            last10 = no_pitches - (no_pitches // divider)
             note_bins = penn.convert.frequency_to_bins(note, quantize_fn=np.floor)
             average90 = np.mean(note_bins[:last10])
 
-            notes_under_threshold = np.abs(note_bins[last10:] - average90) <= 15
+            notes_under_threshold = np.abs(note_bins[last10:] - average90) <= threshold
             note_cut = note[last10:]
             note_cut = note_cut[notes_under_threshold]
 

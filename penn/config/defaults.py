@@ -172,7 +172,6 @@ LOSS = 'categorical_cross_entropy'
 LOSS_CHUNKED = False
 
 # Loss mutli-hot
-
 LOSS_MULTI_HOT = False
 
 # Number of training steps
@@ -194,3 +193,9 @@ VOICED_ONLY = False
 WEIGHT_DECAY = None
 
 EVALUATE = True
+
+REMOVE_OVERHANGS = False
+
+REMOVE_OVERHANGS_DIVIDER = None
+
+REMOVE_OVERHANGS_THRESHOLD = None
