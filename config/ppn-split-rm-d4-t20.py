@@ -1,7 +1,7 @@
 MkjGODULE = 'penn'
 
 # Configuration name
-CONFIG = 'ppn-split-rm'
+CONFIG = 'ppn-split-rm-d4-t20'
 
 # gset only
 DATASETS = ['gset']

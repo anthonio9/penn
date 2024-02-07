@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'ppn-split-rm'
+CONFIG = 'ppn-split-rm-d5-t5'
 
 # gset only
 DATASETS = ['gset']
