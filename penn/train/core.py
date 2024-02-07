@@ -81,7 +81,7 @@ def train(datasets, directory, gpu=None, use_wand=False):
         log_wandb = wandb.init(
             # Set the project where this run will be logged
             project="PENNbyAntoni",
-            name=f"{penn.CONFIG}-{wandb.run.id}",
+            name=f"{penn.CONFIG}",
 
             # Track hyperparameters and run metadata
             config={
