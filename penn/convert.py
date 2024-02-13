@@ -94,3 +94,11 @@ def samples_to_frames(samples):
 def samples_to_seconds(samples, sample_rate=penn.SAMPLE_RATE):
     """Convert number of samples to seconds"""
     return samples / sample_rate
+
+
+###############################################################################
+# Larger conversions
+###############################################################################
+
+def merge_multi_string(logits, bins):
+    pass
