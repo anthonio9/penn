@@ -80,7 +80,10 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
 
     distributions, figsize = process_logits(logits)
 
-    if not penn.LOSS_MULTI_HOT:
+    if penn.LOSS_MULTI_HOT:
+        peak_logits = penn.core.peak_notes_v2(logits)
+        peak_array = penn.core.peak_notes_to_peak_array(peak_logits)
+    else:
         predicted_bins, pitch, periodicity = penn.postprocess(logits)
 
     # Change font size
@@ -127,7 +130,7 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
         nbins_masked = np.ma.MaskedArray(nbins, np.logical_not(nvoiced))
 
         for nbins_row in range(penn.PITCH_CATS):
-            axis.plot(nbins_masked[:, nbins_row], 'r--', marker='o', linewidth=1)
+            axis.plot(nbins_masked[:, nbins_row], 'r--', marker='o', linewidth=.5, markersize=2, zorder=1)
 
         # if predicted_bins is not None:
         #     npredicted_bins = predicted_bins.detach().cpu().numpy()
@@ -137,6 +140,14 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
         #     npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced))
         #
         #     axis.plot(npredicted_bins_masked, 'b:', linewidth=2)
+
+    if peak_array is not None:
+        slices = peak_array.shape[-1]
+
+        x = np.arange(peak_array.shape[0])
+        for idx in range(slices):
+            # axis.plot(peak_array[:, idx], 'b', marker='o', linewidth=.5)
+            axis.scatter(x, peak_array[:, idx], s=4, marker='x', zorder=2)
 
     axis.imshow(distributions, aspect='auto', origin='lower')
 

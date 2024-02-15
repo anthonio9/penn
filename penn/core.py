@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import huggingface_hub
+import numpy as np
 import torch
 import torch.multiprocessing as mp
 import torchaudio
@@ -459,6 +460,13 @@ def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
         logits[..., :minidx, :] = -float('inf')
         logits[..., maxidx:, :] = -float('inf')
 
+        if penn.LOSS_MULTI_HOT:
+            values, indices = logits.topk(k=penn.PITCH_CATS,
+                                          dim=-2,
+                                          )
+            breakpoint()
+            
+
         # Decode pitch from logits
         if penn.DECODER == 'argmax':
             bins, pitch = penn.decode.argmax(logits)
@@ -792,3 +800,88 @@ def resample(audio, sample_rate, target_rate=penn.SAMPLE_RATE):
     resampler = torchaudio.transforms.Resample(sample_rate, target_rate)
     resampler = resampler.to(audio.device)
     return resampler(audio)
+
+
+def peak_notes_v1(logits):
+    """Find the notes with highest values / priority
+
+    Inspired by: https://discuss.pytorch.org/t/pytorch-argrelmax-or-c-function/36404"""
+
+    # mask all the point that are NOT larger than their direct neighbours
+    peak_mask_core = logits[..., :-2, :] < logits[..., 1:-1, :]
+    peak_mask_core = peak_mask_core & (logits[..., 2:, :] < logits[..., 1:-1, :])
+
+    # pad the 2nd to last dimention with zeros
+    peak_mask = torch.nn.functional.pad(peak_mask_core, (0, 0, 1, 1))
+    assert peak_mask.shape == logits.shape
+
+    breakpoint()
+
+
+def peak_notes_v2(logits, width=101, peak_window_size=penn.LOCAL_PITCH_WINDOW_SIZE):
+    """Find the notes with highest values / priority
+
+    Inspired by: https://discuss.pytorch.org/t/pytorch-argrelmax-or-c-function/36404"""
+    padding = width // 2
+    width = padding * 2 + 1
+
+    # find the window maxima on data of shape [N, 1, B], f. eg. [N, 1, 1440]
+    window_maxima = torch.nn.functional.max_pool1d_with_indices(
+            logits.permute(0, 2, 1), width,  1, padding=padding)[1]
+
+    # split into chunks of shape [1, 1, 1440]
+    maxima_chunks = window_maxima.chunk(window_maxima.shape[0], dim=0)
+    logits_chunks = logits.chunk(logits.shape[0], dim=0)
+
+    nice_peaks_list = []
+    peak_list = []
+
+    for mchunk, lchunk in zip(maxima_chunks, logits_chunks):
+        # get unique values from the chunk of indexes
+        candidates = mchunk.unique()
+        flat_mchunk = mchunk.squeeze()
+
+        # get the boolean table for where the peaks are
+        nice_peaks = candidates[flat_mchunk[candidates] == candidates]
+        nice_peaks_list.append(nice_peaks)
+
+        lchunk_peak_list = []
+
+        for peak in nice_peaks:
+            minidx = 0 if peak - peak_window_size <= 0 else peak - peak_window_size
+            maxidx = penn.PITCH_BINS if peak + peak_window_size >- penn.PITCH_BINS else peak + peak_window_size
+
+            lchunk_with_center = lchunk.clone()
+
+            # Remove frequencies outside of allowable range
+            # below works with shapes [128, 1440, 1] and [128, 6, 1440, 1]
+            lchunk_with_center[..., :minidx, :] = -float('inf')
+            lchunk_with_center[..., maxidx:, :] = -float('inf')
+
+            bins, pitch = penn.decode.local_expected_value(
+                    lchunk_with_center, window=peak_window_size)
+
+            lchunk_peak_list.append(bins)
+
+        peak_list.append(lchunk_peak_list)
+
+    return peak_list
+
+
+def peak_notes_to_peak_array(peak_list):
+    """Convert the list of top peaks to an array with a fixed width"""
+    max_len = len(max(peak_list, key=len))
+
+    # create a zeros array of size N x M, 
+    # where N is the number of timesteps, 
+    # M the maximum number of pitches in a timestep
+    peak_array = np.zeros((len(peak_list), max_len))
+    peak_array -= 1
+
+    for idx, peak_slice_list in enumerate(peak_list):
+        np_slice_list = [pk.numpy() if type(pk) is torch.Tensor else pk for pk in peak_slice_list]
+        np_slice_array = np.unique(np.array(np_slice_list))
+        peak_array[idx, :np_slice_array.size] = np_slice_array.flatten()
+
+    peak_array_masked = np.ma.MaskedArray(peak_array, peak_array == -1)
+    return peak_array
