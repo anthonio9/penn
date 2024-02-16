@@ -42,6 +42,7 @@ JAMS_METADATA = 'file_metadata'
 JAMS_FREQ = "frequency"
 JAMS_INDEX = "index"
 JAMS_TIMES = "times"
+JAMS_MIDI = "midi"
 
 ###############################################################################
 # Preprocess datasets
@@ -625,6 +626,9 @@ def jams_to_notes(jam: jams.JObject):
     # Extract all of the pitch annotations
     pitch_data_slices = jam.annotations[JAMS_PITCH_HZ]
 
+    # Extract all of the midi annotations
+    midi_data_slices = jam.annotations[JAMS_NOTE_MIDI]
+
     # Obtain the number of annotations
     stack_size = len(pitch_data_slices)
 
@@ -632,9 +636,13 @@ def jams_to_notes(jam: jams.JObject):
     for slc in range(stack_size):
         # Extract the pitch list pertaining to this slice
         slice_pitches = pitch_data_slices[slc]
+        slice_midi = midi_data_slices[slc]
 
         # Extract the string label for this slice
         string = slice_pitches.annotation_metadata[JAMS_STRING_IDX]
+
+        # empty list for midi notes, every note has a single midi note attached, but multiple pitches
+        midi_list = []
         
         try: 
             last_index = slice_pitches.data[-1].value[JAMS_INDEX] + 1
@@ -646,7 +654,7 @@ def jams_to_notes(jam: jams.JObject):
             note_list = []
             notes_times_list = []
 
-        for pitch in slice_pitches:
+        for pitch, midi in zip(slice_pitches, slice_midi):
             # Extract the pitch
             freq = np.array([pitch.value['frequency']])
 
@@ -654,10 +662,12 @@ def jams_to_notes(jam: jams.JObject):
             if np.sum(freq) != 0 and pitch.value['voiced']:
                 note_list[pitch.value[JAMS_INDEX]].append(pitch.value[JAMS_FREQ])
                 notes_times_list[pitch.value[JAMS_INDEX]].append(pitch.time)
+                midi_list.append(midi_note.value)
 
         notes[int(string)] = {
                 JAMS_FREQ : note_list,
-                JAMS_TIMES : notes_times_list}
+                JAMS_TIMES : notes_times_list,
+                JAMS_MIDI : midi_list}
 
     return notes
 
@@ -714,6 +724,10 @@ def notes_dict_to_pitch_array(notes_dict: dict, duration: int):
     pitch_array = np.vstack(pitch_list)
 
     return pitch_array, time_steps_array
+
+
+def notes_dict_to_pitch_array60(notes_dict: dict):
+    pass
 
 
 def remove_overhangs(notes_dict: dict,

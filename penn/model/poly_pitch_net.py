@@ -144,6 +144,21 @@ class PolyPitchNet6(PolyPitchNet):
         return logits
 
 
+class PolyPitchNet60(PolyPitchNet):
+
+    def __init__(self):
+        layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
+        layers += (
+            Block(1, 256, 481, (2, 2)),
+            Block(256, 32, 225, (2, 2)),
+            Block(32, 32, 97, (2, 2)),
+            Block(32, 128, 66),
+            Block(128, 256, 35),
+            Block(256, 512, 4),
+            torch.nn.Conv1d(512, 60 * penn.PITCH_CATS * 2, 4))
+        super().__init__(layers)
+
+
 class Block(torch.nn.Sequential):
 
     def __init__(
