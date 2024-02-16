@@ -818,32 +818,58 @@ def peak_notes_v1(logits):
     breakpoint()
 
 
-def peak_notes_v2(logits, width=101, peak_window_size=penn.LOCAL_PITCH_WINDOW_SIZE):
+def peak_notes_v2(logits, width=101, threshold_type=None, peak_window_size=penn.LOCAL_PITCH_WINDOW_SIZE):
     """Find the notes with highest values / priority
 
     Inspired by: https://discuss.pytorch.org/t/pytorch-argrelmax-or-c-function/36404"""
     padding = width // 2
     width = padding * 2 + 1
 
+    logits_modified = logits.permute(0, 2, 1)
+    # deduct the average from the logits
+    # logits_modified -= logits_modified.mean(dim=-1).expand(logits.shape[0], penn.PITCH_BINS)[:, None, :]
+
+    # set below average to inf
+    if threshold_type == 'average':
+        average = logits_modified.mean(dim=-1).expand(logits.shape[0], penn.PITCH_BINS)[:, None, :]
+        logits_modified[logits_modified <= average] = -float('inf')
+    elif threshold_type == 'sorted' or threshold_type is None:
+        percentile = 0.8
+        percentile_indx = int(penn.PITCH_BINS * percentile)
+
+        logits_sorted, _ = torch.sort(logits_modified, dim=-1)
+        threshold = logits_sorted[..., percentile_indx].expand(logits.shape[0], penn.PITCH_BINS)[:, None, :]
+        logits_modified[logits_modified <= threshold] = -float('inf')
+
     # find the window maxima on data of shape [N, 1, B], f. eg. [N, 1, 1440]
     window_maxima = torch.nn.functional.max_pool1d_with_indices(
-            logits.permute(0, 2, 1), width,  1, padding=padding)[1]
+            logits_modified, 
+            kernel_size=width,
+            stride=width // 2,
+            padding=padding)[1]
 
     # split into chunks of shape [1, 1, 1440]
     maxima_chunks = window_maxima.chunk(window_maxima.shape[0], dim=0)
-    logits_chunks = logits.chunk(logits.shape[0], dim=0)
+    logits_chunks = logits.chunk(logits_modified.shape[0], dim=0)
+    logits_modified_chunks = logits_modified.chunk(logits_modified.shape[0], dim=0)
 
     nice_peaks_list = []
     peak_list = []
 
-    for mchunk, lchunk in zip(maxima_chunks, logits_chunks):
+    for mchunk, lchunk, lmchunk in zip(maxima_chunks, logits_chunks, logits_modified_chunks):
         # get unique values from the chunk of indexes
         candidates = mchunk.unique()
         flat_mchunk = mchunk.squeeze()
 
-        # get the boolean table for where the peaks are
-        nice_peaks = candidates[flat_mchunk[candidates] == candidates]
-        nice_peaks_list.append(nice_peaks)
+        # # get the boolean table for where the peaks are
+        # nice_peaks = candidates[flat_mchunk[candidates] == candidates]
+        #
+        # flat_lmchunk = lmchunk.squeeze()
+        # nice_peaks = nice_peaks[flat_lmchunk[nice_peaks].isfinite()]
+        #
+        # nice_peaks_list.append(nice_peaks)
+
+        nice_peaks = candidates[lmchunk.squeeze()[candidates].isfinite()]
 
         lchunk_peak_list = []
 
