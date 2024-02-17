@@ -61,6 +61,19 @@ def midi_to_frequency(midi):
     return 440 * 2 ** ((midi - 69) / 12)
 
 
+def midi_to_cents(midi):
+    """Convert midi notes to cents"""
+    return frequency_to_cents(midi_to_frequency(midi))
+
+
+def midi_to_organ_key(midi):
+    """Convert midi note number to an organ key number. 
+    The difference between midi note numbers and organs is that
+    organs only have 61 keys. Midi note number 36 translates to
+    an organ key number 0"""
+    return midi - 36
+
+
 ###############################################################################
 # Time conversions
 ###############################################################################

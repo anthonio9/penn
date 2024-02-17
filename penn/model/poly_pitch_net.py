@@ -155,9 +155,21 @@ class PolyPitchNet60(PolyPitchNet):
             Block(32, 128, 66),
             Block(128, 256, 35),
             Block(256, 512, 4),
-            torch.nn.Conv1d(512, 60 * penn.PITCH_CATS * 2, 4))
+            torch.nn.Conv1d(512, penn.PITCH_CATS * penn.PITCH_BINS * 2, 4))
         super().__init__(layers)
 
+    def forward(self, frames):
+        # shape=(batch, 1, penn.WINDOW_SIZE) =>
+        # shape=(batch, penn.PITCH_BINS, penn.NUM_TRAINING_FRAMES)
+        logits = torch.nn.Sequential.forward(self, frames[:, :, 16:-15])
+
+        # [128, 1440, 6] => [128, 6, 1440]
+        logits = logits.permute(0, 2, 1)
+        
+        # [128, 1440, 6] => [128, 6, 1440, 1]
+        logits = logits[..., None]
+
+        return logits
 
 class Block(torch.nn.Sequential):
 

@@ -71,14 +71,21 @@ class Dataset(torch.utils.data.Dataset):
         pitch = torch.from_numpy(pitch)
         voiced = torch.from_numpy(voiced)
 
-        # Convert to pitch bin categories
-        bins = penn.convert.frequency_to_bins(pitch)
+        if not penn.MIDI60:
+            # Convert to pitch bin categories
+            bins = penn.convert.frequency_to_bins(pitch)
+        else:
+            bins = pitch
 
         # Set unvoiced bins to random values
-        bins = torch.where(
-            ~voiced,
-            torch.randint(0, penn.PITCH_BINS, bins.shape, dtype=torch.long),
-            bins)
+        bins[:penn.PITCH_CATS, :] = torch.where(
+            ~voiced[:penn.PITCH_CATS, :],
+            torch.randint(
+                0 + penn.MIDI_OFFSET_RAND,
+                penn.PITCH_BINS + penn.MIDI_OFFSET_RAND,
+                bins[:penn.PITCH_CATS :].shape,
+                dtype=torch.long),
+            bins[:penn.PITCH_CATS, :])
 
         return audio, bins, pitch, voiced, stem
 
@@ -138,14 +145,21 @@ class Dataset(torch.utils.data.Dataset):
         pitch = torch.from_numpy(pitch[..., start:end].copy())
         voiced = torch.from_numpy(voiced[..., start:end].copy())
 
-        # Convert to pitch bin categories
-        bins = penn.convert.frequency_to_bins(pitch)
+        if not penn.MIDI60:
+            # Convert to pitch bin categories
+            bins = penn.convert.frequency_to_bins(pitch)
+        else:
+            bins = pitch
 
         # Set unvoiced bins to random values
-        bins = torch.where(
-            ~voiced,
-            torch.randint(0, penn.PITCH_BINS, bins.shape, dtype=torch.long),
-            bins)
+        bins[:penn.PITCH_CATS, :] = torch.where(
+            ~voiced[:penn.PITCH_CATS, :],
+            torch.randint(
+                0 + penn.MIDI_OFFSET_RAND,
+                penn.PITCH_BINS + penn.MIDI_OFFSET_RAND,
+                bins[:penn.PITCH_CATS, :].shape,
+                dtype=torch.long),
+            bins[:penn.PITCH_CATS, :])
 
         return audio[None], bins, pitch, voiced, stem
 

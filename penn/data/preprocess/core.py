@@ -266,6 +266,8 @@ def gset():
         pitch, times = extract_pitch_array_jams(
                 jams_track, audio_file.stem, uniform=True)
 
+        breakpoint()
+
         if penn.STRING_INDEX is not None:
             pitch = pitch[penn.STRING_INDEX, :]
             pitch = pitch[None, :]
@@ -273,6 +275,7 @@ def gset():
         if penn.INTERPOLATE_UNVOICED:
             # Fill unvoiced regions via linear interpolation
             pitch, voiced = interpolate_unvoiced(pitch)
+            breakpoint()
         else:
             unvoiced = pitch == 0
             voiced = ~unvoiced
@@ -474,6 +477,22 @@ def sort_pitch_list(times: np.ndarray, pitch_list: list) -> Tuple[np.ndarray, li
     return times, pitch_list
 
 
+def time_series_to_uniform_from_array(times: np.ndarray, values: np.ndarray, hop_length: float, duration=None) -> Tuple[np.ndarray, np.ndarray]:
+        values_list = values.tolist()
+        values_list = [np.array([val]) for val in values_list]
+
+        entry_times, values_array = sort_pitch_list(times, values_list)
+
+        # Align the pitch list with a uniform time grid
+        entry_times, values_array = time_series_to_uniform(
+                times=entry_times,
+                values=values_array,
+                hop_length=penn.data.preprocess.GSET_HOPSIZE_SECONDS,
+                duration=duration)
+
+        return entry_times, values_array
+
+
 def time_series_to_uniform(times: np.ndarray, values: list, hop_length: float, duration=None) -> Tuple[np.ndarray, np.ndarray]:
     """
     Convert a semi-regular time series with gaps into a uniform time series.
@@ -545,13 +564,25 @@ def extract_pitch_array_jams(jam: jams.JAMS, track, uniform=True) -> Tuple[np.nd
       time_steps array is of shape (T, )
       S - number of strings, T - number of time steps
     """
-    if penn.REMOVE_OVERHANGS:
+    if penn.REMOVE_OVERHANGS or penn.MIDI60:
         notes_dict = jams_to_notes(jam)
-        notes_removed_overhangs = remove_overhangs(notes_dict)
-        pitch_array, time_steps_array = notes_dict_to_pitch_array(
-                notes_removed_overhangs,
-                jam.file_metadata.duration)
+
+        if penn.REMOVE_OVERHANGS:
+            notes_dict = remove_overhangs(notes_dict)
+
+        if penn.MIDI60:
+            pitch_array, offset_array, time_steps_array = notes_dict_to_pitch_array60(
+                    notes_dict, 
+                    jam.file_metadata.duration)
+            pitch_array = np.vstack([pitch_array, offset_array])
+
+        else:
+            pitch_array, time_steps_array = notes_dict_to_pitch_array(
+                    notes_dict,
+                    jam.file_metadata.duration)
+
         return pitch_array, time_steps_array
+
 
     # Extract all of the pitch annotations
     pitch_data_slices = jam.annotations[JAMS_PITCH_HZ]
@@ -641,9 +672,9 @@ def jams_to_notes(jam: jams.JObject):
         # Extract the string label for this slice
         string = slice_pitches.annotation_metadata[JAMS_STRING_IDX]
 
-        # empty list for midi notes, every note has a single midi note attached, but multiple pitches
-        midi_list = []
-        
+        # midi list for midi notes, every note has a single midi note attached, but multiple pitches
+        midi_list = [midi_note.value for midi_note in slice_midi]
+
         try: 
             last_index = slice_pitches.data[-1].value[JAMS_INDEX] + 1
             # prepare empty lists for the notes
@@ -654,7 +685,7 @@ def jams_to_notes(jam: jams.JObject):
             note_list = []
             notes_times_list = []
 
-        for pitch, midi in zip(slice_pitches, slice_midi):
+        for pitch in slice_pitches:
             # Extract the pitch
             freq = np.array([pitch.value['frequency']])
 
@@ -662,7 +693,6 @@ def jams_to_notes(jam: jams.JObject):
             if np.sum(freq) != 0 and pitch.value['voiced']:
                 note_list[pitch.value[JAMS_INDEX]].append(pitch.value[JAMS_FREQ])
                 notes_times_list[pitch.value[JAMS_INDEX]].append(pitch.time)
-                midi_list.append(midi_note.value)
 
         notes[int(string)] = {
                 JAMS_FREQ : note_list,
@@ -678,16 +708,19 @@ def notes_dict_to_pitch_dict(notes_dict: dict):
     for slc, notes in notes_dict.items():
         freq_list = []
         time_list = []
+        midi_list = []
 
         pitch_slice_dict = pitch_dict[int(slc)] = {}
 
-        for note, timestamp in zip(notes[JAMS_FREQ], notes[JAMS_TIMES]):
+        for note, timestamp, midi_note in zip(notes[JAMS_FREQ], notes[JAMS_TIMES], notes[JAMS_MIDI]):
             # notes and timestamp are really lists and not single values
             freq_list.extend(note)
             time_list.extend(timestamp)
+            midi_list.extend([midi_note]*len(note))
 
-        pitch_slice_dict["pitch"] = np.array(freq_list)
-        pitch_slice_dict["time"] = np.array(time_list)
+        pitch_slice_dict[JAMS_FREQ] = np.array(freq_list)
+        pitch_slice_dict[JAMS_TIMES] = np.array(time_list)
+        pitch_slice_dict[JAMS_MIDI] = np.array(midi_list)
 
     return pitch_dict
 
@@ -700,9 +733,9 @@ def notes_dict_to_pitch_array(notes_dict: dict, duration: int):
 
     for slc, slice_dict in pitch_dict.items():
         # extract pitch and time array from the pitch dict and prepare them to match the type required by sorting
-        pitch_slice_list = slice_dict["pitch"].tolist()
+        pitch_slice_list = slice_dict[JAMS_FREQ].tolist()
         pitch_slice_list = [np.array([pitch]) for pitch in pitch_slice_list]
-        times = slice_dict["time"]
+        times = slice_dict[JAMS_TIMES]
 
         entry_times, slice_pitch_array = sort_pitch_list(times, pitch_slice_list)
 
@@ -720,14 +753,72 @@ def notes_dict_to_pitch_array(notes_dict: dict, duration: int):
     time_lenghts = [len(times) for times in times_list]
     assert time_lenghts[0] == sum(time_lenghts) / len(time_lenghts)
 
-    time_steps_array = times_list[0]
+    times_steps_array = times_list[0]
     pitch_array = np.vstack(pitch_list)
 
-    return pitch_array, time_steps_array
+    return pitch_array, times_steps_array
 
 
-def notes_dict_to_pitch_array60(notes_dict: dict):
-    pass
+def notes_dict_to_pitch_array60(
+        notes_dict: dict,
+        duration: int,
+        offset_limit=penn.MIDI_OFFSET_LIMIT):
+    # check if any notes are lower than the floor approximation of the midi note
+    pitch_dict = notes_dict_to_pitch_dict(notes_dict)
+
+    midi_list = []
+    offset_list = []
+    times_list = []
+
+    for slc, slice_dict in pitch_dict.items():
+        pitch_slice = slice_dict[JAMS_FREQ]
+        midi_slice = np.round(slice_dict[JAMS_MIDI])
+        times_slice = slice_dict[JAMS_TIMES]
+        
+        # calculate the offset in cents
+        midi_cents = penn.convert.midi_to_cents(midi_slice)
+        pitch_cents = penn.convert.frequency_to_cents(pitch_slice)
+        offset = midi_cents - pitch_cents
+        offset[offset >= penn.MIDI_OFFSET_LIMIT] = penn.MIDI_OFFSET_LIMIT - 1
+        offset[offset < -penn.MIDI_OFFSET_LIMIT] = -penn.MIDI_OFFSET_LIMIT
+
+        # # this assumes that the deviation is in range [-100, +100] cents
+        # resolution = penn.MIDI_OFFSET_LIMIT*2 / 60
+        # offset += penn.MIDI_OFFSET_LIMIT
+        # offset = np.round(offset / resolution)
+
+        entry_times, midi_array = time_series_to_uniform_from_array(
+                times=times_slice, 
+                values=midi_slice, 
+                hop_length=penn.data.preprocess.GSET_HOPSIZE_SECONDS,
+                duration=duration)
+
+        entry_times, offset_array = time_series_to_uniform_from_array(
+                times=times_slice, 
+                values=offset, 
+                hop_length=penn.data.preprocess.GSET_HOPSIZE_SECONDS,
+                duration=duration)
+
+        times_list.append(entry_times)
+        midi_list.append(midi_array.T)
+        offset_list.append(offset_array.T)
+
+    # assert all entry times arrays are of the same lenght
+    time_lenghts = [len(times) for times in times_list]
+    assert time_lenghts[0] == sum(time_lenghts) / len(time_lenghts)
+
+    times_steps_array = times_list[0]
+    midi_array = np.vstack(midi_list)
+
+    below36 = midi_array[midi_array < 36]
+
+    if not (below36 == 0).all():
+        breakpoint()
+        pass
+
+    offset_array = np.vstack(offset_list)
+
+    return midi_array, offset_array, times_steps_array
 
 
 def remove_overhangs(notes_dict: dict,

@@ -374,9 +374,33 @@ def loss(logits, bins):
         # it may happen that two strings are playing the same note, in that case interpret it as a single note
         bins[bins > 1] = 1
 
+    elif penn.MIDI60:
+        midi_array = penn.convert.midi_to_organ_key(bins[:, :penn.PITCH_CATS, :])
+        offset_array = bins[:, penn.PITCH_CATS:, :]
+
+        # Set unvoiced bins to random values
+        offset_array = torch.where(
+            offset_array == 0,
+            torch.randint(
+                -penn.MIDI_OFFSET_LIMIT,
+                penn.MIDI_OFFSET_LIMIT,
+                offset_array.shape,
+                dtype=torch.long),
+            offset_array)
+
+        # this assumes that the deviation is in range [-100, +100] cents
+        resolution = penn.MIDI_OFFSET_LIMIT*2 / 60
+        offset_array += penn.MIDI_OFFSET_LIMIT
+        offset_array[offset_array < 0] = 0
+        offset_array[offset_array >= penn.MIDI_OFFSET_LIMIT] = penn.MIDI_OFFSET_LIMIT - 1
+        offset_array = torch.round(offset_array / resolution)
+
+        midi_bins = get_bins(midi_array.long())
+        offset_bins = get_bins(offset_array.long())
+
+        bins = torch.vstack([midi_bins, offset_bins])
     else: 
         bins = get_bins(bins)
-
 
     if penn.LOSS == 'binary_cross_entropy':
 
