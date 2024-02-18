@@ -167,11 +167,11 @@ def train(datasets, directory, gpu=None, use_wand=False):
                         loader=test_loader,
                         gpu=gpu)
 
-                if use_wand:
+                if use_wand and not penn.MIDI60:
                     log_wandb.log({"test_logits": wandb.Image(fig)})
 
             # Evaluate
-            if step % penn.LOG_INTERVAL == 0:
+            if step % penn.LOG_INTERVAL == 0 and not penn.MIDI60:
                 evaluate_fn = functools.partial(
                     evaluate,
                     directory,

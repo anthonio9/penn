@@ -266,8 +266,6 @@ def gset():
         pitch, times = extract_pitch_array_jams(
                 jams_track, audio_file.stem, uniform=True)
 
-        breakpoint()
-
         if penn.STRING_INDEX is not None:
             pitch = pitch[penn.STRING_INDEX, :]
             pitch = pitch[None, :]
@@ -275,7 +273,6 @@ def gset():
         if penn.INTERPOLATE_UNVOICED:
             # Fill unvoiced regions via linear interpolation
             pitch, voiced = interpolate_unvoiced(pitch)
-            breakpoint()
         else:
             unvoiced = pitch == 0
             voiced = ~unvoiced
@@ -811,10 +808,7 @@ def notes_dict_to_pitch_array60(
     midi_array = np.vstack(midi_list)
 
     below36 = midi_array[midi_array < 36]
-
-    if not (below36 == 0).all():
-        breakpoint()
-        pass
+    assert (below36 == 0).all()
 
     offset_array = np.vstack(offset_list)
 
