@@ -385,7 +385,8 @@ def loss(logits, bins):
                 -penn.MIDI_OFFSET_LIMIT,
                 penn.MIDI_OFFSET_LIMIT,
                 offset_array.shape,
-                dtype=torch.long),
+                dtype=torch.long)
+            .to(offset_array.device),
             offset_array)
 
         # this assumes that the deviation is in range [-100, +100] cents
