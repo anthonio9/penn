@@ -80,6 +80,8 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
 
     distributions, figsize = process_logits(logits)
 
+    peak_array = None
+
     if penn.LOSS_MULTI_HOT:
         peak_logits = penn.core.peak_notes_v2(logits)
         peak_array = penn.core.peak_notes_to_peak_array(peak_logits)
@@ -223,6 +225,10 @@ def from_model_and_testset(model, loader, gpu=None, iters=0):
             logits.append(batch_logits)
 
         logits = torch.cat(logits)
+
+        if penn.MIDI60:
+            bins = bins[..., :penn.PITCH_CATS, :]
+            voiced = voiced[..., :penn.PITCH_CATS, :]
 
         return logits_matplotlib(logits, bins, voiced, stem)
 

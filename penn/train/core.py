@@ -167,7 +167,7 @@ def train(datasets, directory, gpu=None, use_wand=False):
                         loader=test_loader,
                         gpu=gpu)
 
-                if use_wand and not penn.MIDI60:
+                if use_wand and penn.MIDI60:
                     log_wandb.log({"test_logits": wandb.Image(fig)})
 
             # Evaluate
