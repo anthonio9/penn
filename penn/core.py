@@ -455,17 +455,14 @@ def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
             torch.tensor(fmax),
             torch.ceil)
 
+        if penn.MIDI60:
+            miidx = 0
+            maxidx = penn.PITCH_BINS - 1
+
         # Remove frequencies outside of allowable range
         # below works with shapes [128, 1440, 1] and [128, 6, 1440, 1]
         logits[..., :minidx, :] = -float('inf')
         logits[..., maxidx:, :] = -float('inf')
-
-        if penn.LOSS_MULTI_HOT:
-            values, indices = logits.topk(k=penn.PITCH_CATS,
-                                          dim=-2,
-                                          )
-            breakpoint()
-            
 
         # Decode pitch from logits
         if penn.DECODER == 'argmax':

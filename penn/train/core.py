@@ -321,6 +321,12 @@ def loss(logits, bins):
             logits_chunks = logits.chunk(penn.PITCH_CATS, dim=1)
             logits_chunks = [chunk.squeeze(1) for chunk in logits_chunks]
             logits = torch.stack(logits_chunks, dim=0)
+        elif penn.MIDI60:
+            # fix this
+            logits = logits.squeeze(-2)
+            logits_chunks = logits.chunk(penn.PITCH_CATS, dim=1)
+            logits_chunks = [chunk.squeeze(dim=1) for chunk in logits_chunks]
+            logits = torch.vstack(logits_chunks)
         else:
             logits = logits.reshape(-1, penn.PITCH_BINS)
     else:
@@ -376,30 +382,35 @@ def loss(logits, bins):
 
     elif penn.MIDI60:
         midi_array = penn.convert.midi_to_organ_key(bins[:, :penn.PITCH_CATS, :])
-        offset_array = bins[:, penn.PITCH_CATS:, :]
-
-        # Set unvoiced bins to random values
-        offset_array = torch.where(
-            offset_array == 0,
-            torch.randint(
-                -penn.MIDI_OFFSET_LIMIT,
-                penn.MIDI_OFFSET_LIMIT,
-                offset_array.shape,
-                dtype=torch.long)
-            .to(offset_array.device),
-            offset_array)
-
-        # this assumes that the deviation is in range [-100, +100] cents
-        resolution = penn.MIDI_OFFSET_LIMIT*2 / 60
-        offset_array += penn.MIDI_OFFSET_LIMIT
-        offset_array[offset_array < 0] = 0
-        offset_array[offset_array >= penn.MIDI_OFFSET_LIMIT] = penn.MIDI_OFFSET_LIMIT - 1
-        offset_array = torch.round(offset_array / resolution)
 
         midi_bins = get_bins(midi_array.long())
-        offset_bins = get_bins(offset_array.long())
 
-        bins = torch.vstack([midi_bins, offset_bins])
+        if penn.MODEL == 'ppnmidi60x2':
+            offset_array = bins[:, penn.PITCH_CATS:, :]
+
+            # Set unvoiced bins to random values
+            offset_array = torch.where(
+                offset_array == 0,
+                torch.randint(
+                    -penn.MIDI_OFFSET_LIMIT,
+                    penn.MIDI_OFFSET_LIMIT,
+                    offset_array.shape,
+                    dtype=torch.long)
+                .to(offset_array.device),
+                offset_array)
+
+            # this assumes that the deviation is in range [-100, +100] cents
+            resolution = penn.MIDI_OFFSET_LIMIT*2 / 60
+            offset_array += penn.MIDI_OFFSET_LIMIT
+            offset_array[offset_array < 0] = 0
+            offset_array[offset_array >= penn.MIDI_OFFSET_LIMIT] = penn.MIDI_OFFSET_LIMIT - 1
+            offset_array = torch.round(offset_array / resolution)
+            offset_bins = get_bins(offset_array.long())
+
+            bins = torch.vstack([midi_bins, offset_bins])
+        else:
+            bins = midi_bins
+        
     else: 
         bins = get_bins(bins)
 

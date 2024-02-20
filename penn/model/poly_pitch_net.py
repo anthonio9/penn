@@ -144,7 +144,7 @@ class PolyPitchNet6(PolyPitchNet):
         return logits
 
 
-class PolyPitchNet60(PolyPitchNet):
+class PolyPitchNet60x2(PolyPitchNet):
 
     def __init__(self):
         layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()

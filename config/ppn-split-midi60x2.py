@@ -26,7 +26,7 @@ VOICED_ONLY = True
 STRING_INDEX = None
 
 # poly pitch net model
-MODEL = 'ppn'
+MODEL = 'ppnmidi60x2'
 
 PITCH_BINS = 60
 
