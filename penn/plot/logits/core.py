@@ -228,6 +228,7 @@ def from_model_and_testset(model, loader, gpu=None, iters=0):
 
         if penn.MIDI60:
             bins = bins[..., :penn.PITCH_CATS, :]
+            bins = penn.convert.midi_to_organ_key(bins)
             voiced = voiced[..., :penn.PITCH_CATS, :]
 
         return logits_matplotlib(logits, bins, voiced, stem)

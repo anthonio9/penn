@@ -272,7 +272,6 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
                 voiced = voiced[:, :penn.PITCH_CATS, :]
                 pitch = pitch[:, :penn.PITCH_CATS, :]
 
-
             if len(logits.shape) == 4 or penn.LOSS_MULTI_HOT:
                 binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
                 pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
