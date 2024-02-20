@@ -167,11 +167,11 @@ def train(datasets, directory, gpu=None, use_wand=False):
                         loader=test_loader,
                         gpu=gpu)
 
-                if use_wand and penn.MIDI60:
+                if use_wand:
                     log_wandb.log({"test_logits": wandb.Image(fig)})
 
             # Evaluate
-            if step % penn.LOG_INTERVAL == 0 and not penn.MIDI60:
+            if step % penn.LOG_INTERVAL == 0:
                 evaluate_fn = functools.partial(
                     evaluate,
                     directory,
@@ -266,6 +266,12 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
 
             # Forward pass
             logits = model(audio.to(device))
+
+            if penn.MIDI60:
+                bins = bins[:, :penn.PITCH_CATS, :]
+                voiced = voiced[:, :penn.PITCH_CATS, :]
+                pitch = pitch[:, :penn.PITCH_CATS, :]
+
 
             if len(logits.shape) == 4 or penn.LOSS_MULTI_HOT:
                 binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))

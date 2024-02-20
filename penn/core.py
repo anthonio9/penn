@@ -456,7 +456,7 @@ def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
             torch.ceil)
 
         if penn.MIDI60:
-            miidx = 0
+            minidx = 0
             maxidx = penn.PITCH_BINS - 1
 
         # Remove frequencies outside of allowable range
