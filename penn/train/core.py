@@ -324,8 +324,10 @@ def loss(logits, bins):
         elif penn.MIDI60:
             # fix this
             logits = logits.squeeze(-2)
-            logits_chunks = logits.chunk(penn.PITCH_CATS, dim=1)
-            logits_chunks = [chunk.squeeze(dim=1) for chunk in logits_chunks]
+            # logits_chunks = logits.chunk(penn.PITCH_CATS, dim=1)
+            logits_chunks = logits.chunk(logits.shape[0], dim=0)
+            # logits_chunks = [chunk.squeeze(dim=1) for chunk in logits_chunks]
+            logits_chunks = [chunk.flatten() for chunk in logits_chunks]
             logits = torch.vstack(logits_chunks)
         else:
             logits = logits.reshape(-1, penn.PITCH_BINS)
@@ -333,10 +335,10 @@ def loss(logits, bins):
         logits = logits.permute(0, 2, 1).reshape(-1, penn.PITCH_BINS)
 
     def get_bins(bins):
-        bins = bins.flatten()
 
         # Maybe blur target
         if penn.GAUSSIAN_BLUR:
+            bins = bins.flatten()
 
             # Cache cents values to evaluate distributions at
             if not hasattr(loss, 'cents'):
@@ -358,9 +360,17 @@ def loss(logits, bins):
             bins = bins / (bins.max(dim=1, keepdims=True).values + 1e-8)
 
         else:
+            if penn.MIDI60:
+                bins_chunk = bins.chunk(bins.shape[0], dim=0)
+                bins_chunk_1hot = [
+                        torch.nn.functional.one_hot(chunk.flatten(), penn.PITCH_BINS).float().flatten()
+                        for chunk in bins_chunk]
+                bins = torch.stack(bins_chunk_1hot, dim=0)
+            else:
+                bins = bins.flatten()
 
-            # One-hot encoding
-            bins = torch.nn.functional.one_hot(bins, penn.PITCH_BINS).float()
+                # One-hot encoding
+                bins = torch.nn.functional.one_hot(bins, penn.PITCH_BINS).float()
 
         return bins
 
