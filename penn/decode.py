@@ -164,5 +164,8 @@ def local_expected_value_from_bins(
     # Get values in cents
     cents = penn.convert.bins_to_cents(torch.clip(indices - window // 2, 0))
 
+    if penn.MIDI60:
+        cents = indices
+
     # Decode using local expected value
     return expected_value(torch.gather(padded, -1, indices), cents)

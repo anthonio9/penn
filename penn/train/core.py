@@ -79,6 +79,7 @@ def train(datasets, directory, gpu=None, use_wand=False):
     if use_wand:
         wandb.login()
         log_wandb = wandb.init(
+            # dir=tempfile.gettempdir(),
             # Set the project where this run will be logged
             project="PENNbyAntoni",
             name=f"{penn.CONFIG}",
