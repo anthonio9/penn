@@ -132,16 +132,16 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
         nbins_masked = np.ma.MaskedArray(nbins, np.logical_not(nvoiced))
 
         for nbins_row in range(penn.PITCH_CATS):
-            axis.plot(nbins_masked[:, nbins_row], 'r--', marker='o', linewidth=.5, markersize=2, zorder=1)
+            axis.plot(nbins_masked[:, nbins_row], 'r--', marker='o', linewidth=.5, markersize=1.5, zorder=1)
 
-        # if predicted_bins is not None:
-        #     npredicted_bins = predicted_bins.detach().cpu().numpy()
-        #     npredicted_bins = npredicted_bins.squeeze().T
-        #
-        #     npredicted_bins += offset
-        #     npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced))
-        #
-        #     axis.plot(npredicted_bins_masked, 'b:', linewidth=2)
+        if predicted_bins is not None:
+            npredicted_bins = predicted_bins.detach().cpu().numpy()
+            npredicted_bins = npredicted_bins.squeeze().T
+
+            npredicted_bins += offset
+            npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced))
+
+            axis.plot(npredicted_bins_masked, 'b:', linewidth=2)
 
     if peak_array is not None:
         slices = peak_array.shape[-1]
