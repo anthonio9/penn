@@ -204,3 +204,4 @@ class RPA(torchutil.metrics.Average):
         super().update(
             (torch.abs(difference) < THRESHOLD).sum(),
             predicted.numel())
+

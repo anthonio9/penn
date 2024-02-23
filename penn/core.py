@@ -488,6 +488,27 @@ def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
         return bins.T, pitch.T, periodicity.T
 
 
+def postprocess_with_periodicity(logits, pthreshold, fmin=penn.FMIN, fmax=penn.FMAX):
+    """Convert model output to pitch based on periodicity
+
+    Paramters:
+        logits - numpy array
+            [N, C, B] size array with pitch probabilities BEFORE softmax
+        pthreshold - float
+            value for thresholding the periodicity
+
+    Returns: 
+    """
+    with torch.inference_mode():
+        bins, pitch, periodicity = postprocess(logits, fmin, fmax)
+        # shape is [1, 6, N] for all bins, pitch and periodicity
+        pitch[periodicity < pthreshold] = 0
+
+        return pitch
+
+    return None
+
+
 def preprocess(
     audio,
     sample_rate=penn.SAMPLE_RATE,

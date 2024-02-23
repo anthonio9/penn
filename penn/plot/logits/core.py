@@ -86,7 +86,9 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
         peak_logits = penn.core.peak_notes_v2(logits)
         peak_array = penn.core.peak_notes_to_peak_array(peak_logits)
     else:
-        predicted_bins, pitch, periodicity = penn.postprocess(logits)
+        # predicted_bins, pitch, periodicity = penn.postprocess(logits)
+        pitch = penn.postprocess_with_periodicity(logits, 0.5)
+
 
     # Change font size
     matplotlib.rcParams.update({'font.size': 10})
