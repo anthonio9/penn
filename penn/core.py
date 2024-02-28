@@ -509,6 +509,40 @@ def postprocess_with_periodicity(logits, pthreshold, fmin=penn.FMIN, fmax=penn.F
     return None
 
 
+def postprocess_pitch_and_sort(pitch, voiced):
+    """Convert an array of pitch to a list of sorted pitches
+
+    The function will checks the pitch at a timestamp given by voiced array,
+    will return unique values from the pitch array if voiced and empty if not.
+
+    Paramters:
+        pitch - numpy array
+            [1, C, N] size array returned by postprocess or postprocess_with_periodicity
+
+        voiced - numpy array indicating the voiced parts
+            [1, C, N] size
+
+    Returns:
+        pitch_array - numpy array
+            [1, C, M] size where M - number of voiced time steps
+
+        voiced - numpy array of size [1, C, M]
+            array indicating the voiced pitch over all pitch categories.
+            Every category has the same number voiced array.
+            
+    """
+    voiced = voiced.sum(dim=1).squeeze().bool()
+
+    pitch_voiced = pitch[:, :, voiced]
+    n = pitch_voiced.shape[-1]
+
+    pitch_voiced_chunks = pitch_voiced.chunk(n, dim=-1)
+    pitch_list = [chunk.sort()[0] for chunk in pitch_voiced_chunks]
+    pitch_array = torch.vstack(pitch_list).permute(2, 1, 0)
+
+    return pitch_list, voiced.expand(1, pitch_array.shape[1], -1)
+
+
 def preprocess(
     audio,
     sample_rate=penn.SAMPLE_RATE,
