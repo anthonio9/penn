@@ -504,7 +504,7 @@ def postprocess_with_periodicity(logits, pthreshold, fmin=penn.FMIN, fmax=penn.F
         # shape is [1, 6, N] for all bins, pitch and periodicity
         pitch[periodicity < pthreshold] = 0
 
-        return pitch
+        return bins, pitch, periodicity >= pthreshold
 
     return None
 
@@ -512,8 +512,9 @@ def postprocess_with_periodicity(logits, pthreshold, fmin=penn.FMIN, fmax=penn.F
 def postprocess_pitch_and_sort(pitch, voiced):
     """Convert an array of pitch to a list of sorted pitches
 
-    The function will checks the pitch at a timestamp given by voiced array,
+    The function will checks the pitch at a timestamp given by the voiced array,
     will return unique values from the pitch array if voiced and empty if not.
+    The timestamps where all the strings are unvoiced are deleted from the array.
 
     Paramters:
         pitch - numpy array
@@ -540,7 +541,7 @@ def postprocess_pitch_and_sort(pitch, voiced):
     pitch_list = [chunk.sort()[0] for chunk in pitch_voiced_chunks]
     pitch_array = torch.vstack(pitch_list).permute(2, 1, 0)
 
-    return pitch_list, voiced.expand(1, pitch_array.shape[1], -1)
+    return pitch_array, voiced.expand(1, pitch_array.shape[1], -1)
 
 
 def preprocess(

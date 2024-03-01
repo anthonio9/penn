@@ -1,3 +1,3 @@
 from . import metrics
 from .core import *
-from .metrics import Metrics, PitchMetrics
+from .metrics import Metrics, PitchMetrics, MutliPitchMetrics

@@ -87,8 +87,8 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
         peak_array = penn.core.peak_notes_to_peak_array(peak_logits)
     else:
         # predicted_bins, pitch, periodicity = penn.postprocess(logits)
-        pitch = penn.postprocess_with_periodicity(logits, 0.5)
-
+        predicted_bins, pitch_predicted, voiced_predicted = penn.postprocess_with_periodicity(logits, 0.5)
+        penn.core.postprocess_pitch_and_sort(pitch_predicted, voiced)
 
     # Change font size
     matplotlib.rcParams.update({'font.size': 10})
@@ -140,7 +140,10 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
             npredicted_bins = predicted_bins.detach().cpu().numpy()
             npredicted_bins = npredicted_bins.squeeze().T
 
+            # nvoiced_predicted = voiced_predicted.detach().cpu().numpy()
+
             npredicted_bins += offset
+            # npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced_predicted))
             npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced))
 
             axis.plot(npredicted_bins_masked, 'b:', linewidth=2)

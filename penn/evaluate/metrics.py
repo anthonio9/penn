@@ -25,6 +25,7 @@ class Metrics:
         self.f1 = F1()
         self.loss = Loss()
         self.pitch_metrics = PitchMetrics()
+        self.multi_pitch_metrics = MutliPitchMetrics()
 
     def __call__(self):
         if penn.LOSS_MULTI_HOT:
@@ -33,13 +34,17 @@ class Metrics:
                     'loss': self.loss()
                 })
         else:
-            return (
-                {
+            metrics_dict = {
                     'accuracy': self.accuracy(),
                     'loss': self.loss()
-                } |
-                self.f1() |
-                self.pitch_metrics())
+                    }
+            metrics_dict |= self.f1() 
+            metrics_dict |= self.pitch_metrics()
+
+            if penn.PITCH_CATS > 1:
+                metrics_dict |= self.multi_pitch_metrics() 
+
+            return metrics_dict
 
     def update(self, logits, bins, target, voiced):
         # Detach from graph
@@ -54,27 +59,30 @@ class Metrics:
         with torchutil.time.context('decode'):
             predicted, pitch, periodicity = penn.postprocess(logits)
 
-        if not penn.LOSS_MULTI_HOT:
-            # Decode bins, pitch, and periodicity
+            if not penn.LOSS_MULTI_HOT:
+                # Decode bins, pitch, and periodicity
 
-            # Update bin accuracy
-            self.accuracy.update(predicted[voiced], bins[voiced])
+                # Update bin accuracy
+                self.accuracy.update(predicted[voiced], bins[voiced])
 
-            # Update pitch metrics
-            self.pitch_metrics.update(pitch, target, voiced)
+                # Update pitch metrics
+                self.pitch_metrics.update(pitch, target, voiced)
 
-            # Update periodicity metrics
-            self.f1.update(periodicity, voiced)
+                # Update periodicity metrics
+                self.f1.update(periodicity, voiced)
+
+            if penn.PITCH_CATS == 6:
+                self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
 
     def reset(self):
         self.accuracy.reset()
         self.f1.reset()
         self.loss.reset()
         self.pitch_metrics.reset()
+        self.multi_pitch_metrics.reset()
 
 
 class PitchMetrics:
-
     def __init__(self):
         self.l1 = L1()
         self.rca = RCA()
@@ -104,6 +112,65 @@ class PitchMetrics:
         self.rmse.reset()
         self.rpa.reset()
 
+
+class MutliPitchMetrics:
+
+    def __init__(self, thresholds=None):
+        if thresholds is None:
+            thresholds = sorted(list(set(
+                [2 ** -i for i in range(1, 11)] +
+                [.1 * i for i in range(10)])))
+
+        self.thresholds = thresholds
+        self.frca = [RCA() for _ in range(len(thresholds))]
+        self.frmse = [RMSE() for _ in range(len(thresholds))]
+        self.frpa = [RPA() for _ in range(len(thresholds))]
+
+    def __call__(self):
+        result = {}
+        for frca, frmse, frpa, threshold in zip(
+            self.frca,
+            self.frmse,
+            self.frpa,
+            self.thresholds
+        ):
+            result |= {
+                f'frca-{threshold:.6f}': frca(),
+                f'frmse-{threshold:.6f}': frmse(),
+                f'frpa-{threshold:.6f}': frpa()}
+        return result
+
+    def update(self, pitch, periodicity, target, target_voiced):
+        for frca, frmse, frpa, threshold in zip(
+            self.frca,
+            self.frmse,
+            self.frpa,
+            self.thresholds
+        ):
+            pitch_with_periodicity = pitch.clone()
+            pitch_with_periodicity[periodicity < threshold] = 0
+
+            pitch_array, _ = penn.core.postprocess_pitch_and_sort(
+                    pitch_with_periodicity, target_voiced)
+
+            target_array, _ = penn.core.postprocess_pitch_and_sort(
+                    target, target_voiced)
+
+            # Update metrics
+            frca.update(pitch_array, target_array)
+            frmse.update(pitch_array, target_array)
+            frpa.update(pitch_array, target_array)
+
+    def reset(self):
+        for frca, frmse, frpa in zip(
+            self.frca,
+            self.frmse,
+            self.frpa
+        ):
+            # reset metrics
+            frca.reset()
+            frmse.reset()
+            frpa.reset()
 
 ###############################################################################
 # Individual metrics
