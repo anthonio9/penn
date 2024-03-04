@@ -86,9 +86,9 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
         peak_logits = penn.core.peak_notes_v2(logits)
         peak_array = penn.core.peak_notes_to_peak_array(peak_logits)
     else:
-        # predicted_bins, pitch, periodicity = penn.postprocess(logits)
-        predicted_bins, pitch_predicted, voiced_predicted = penn.postprocess_with_periodicity(logits, 0.5)
-        penn.core.postprocess_pitch_and_sort(pitch_predicted, voiced)
+        predicted_bins, pitch, periodicity = penn.postprocess(logits)
+        # predicted_bins, pitch_predicted, voiced_predicted = penn.postprocess_with_periodicity(logits, 0.5)
+        # penn.core.postprocess_pitch_and_sort(pitch_predicted, voiced)
 
     # Change font size
     matplotlib.rcParams.update({'font.size': 10})
@@ -140,13 +140,35 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
             npredicted_bins = predicted_bins.detach().cpu().numpy()
             npredicted_bins = npredicted_bins.squeeze().T
 
+            periodicity_for_mask = periodicity.detach().cpu().numpy()
+            periodicity_for_mask = periodicity_for_mask.squeeze().T
+            periodicity_mask = periodicity_for_mask >= 0.5
+
             # nvoiced_predicted = voiced_predicted.detach().cpu().numpy()
 
             npredicted_bins += offset
             # npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced_predicted))
-            npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(nvoiced))
+            npredicted_bins_masked = np.ma.MaskedArray(npredicted_bins, np.logical_not(periodicity_mask))
 
             axis.plot(npredicted_bins_masked, 'b:', linewidth=2)
+
+        if periodicity is not None:
+            periodicity_for_plot = periodicity.detach().cpu().numpy()
+            periodicity_for_plot = periodicity_for_plot.squeeze().T
+            periodicity_mask = periodicity_for_plot >= 0.5
+
+            offset = np.arange(0, penn.PITCH_CATS) * int(not penn.LOSS_MULTI_HOT)
+            periodicity_for_plot += offset
+
+            # mask periodicity under the threshold 
+            periodicity_masked = np.ma.MaskedArray(periodicity_for_plot, np.logical_not(periodicity_mask))
+
+            twin = axis.twinx()
+            twin.set_ylim(ymin=0, ymax=penn.PITCH_CATS)
+
+
+            twin.plot(periodicity_for_plot, 'g:', linewidth=2)
+            twin.plot(periodicity_masked, 'm:', linewidth=2)
 
     if peak_array is not None:
         slices = peak_array.shape[-1]

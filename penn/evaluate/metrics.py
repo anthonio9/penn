@@ -71,8 +71,8 @@ class Metrics:
                 # Update periodicity metrics
                 self.f1.update(periodicity, voiced)
 
-            if penn.PITCH_CATS == 6:
-                self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
+                if penn.PITCH_CATS > 1:
+                    self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
 
     def reset(self):
         self.accuracy.reset()
