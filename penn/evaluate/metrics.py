@@ -147,7 +147,7 @@ class MutliPitchMetrics:
             self.frpa,
             self.thresholds
         ):
-            pitch_with_periodicity = pitch.clone()
+            pitch_with_periodicity = pitch.clone().detach()
             pitch_with_periodicity[periodicity < threshold] = 0
             target[torch.logical_not(target_voiced)] = 0
 
@@ -191,7 +191,7 @@ class FRCA(torchutil.metrics.Average):
     def update(self, predicted, target, target_voiced):
         target_tmp = target.clone()
         # store masked values for all the iterations
-        target_masked = torch.zeros(predicted.shape)
+        target_masked = torch.zeros(predicted.shape).to(target.device)
 
         # subtrack each row of predicted from the target
         for ind in range(penn.PITCH_CATS):
