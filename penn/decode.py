@@ -142,7 +142,11 @@ def local_expected_value_from_bins(
     bins,
     logits,
     window=penn.LOCAL_PITCH_WINDOW_SIZE):
-    """Decode pitch using normal assumption around argmax from bin indices"""
+    """Decode pitch using normal assumption around argmax from bin indices
+
+    Returns
+        freq - pitch vector in Hz
+    """
     # Pad
     padded = torch.nn.functional.pad(
         logits.squeeze(-1),

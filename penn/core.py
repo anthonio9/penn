@@ -532,16 +532,26 @@ def postprocess_pitch_and_sort(pitch, voiced):
             Every category has the same number voiced array.
             
     """
-    voiced = voiced.sum(dim=1).squeeze().bool()
+    voiced_summed = voiced.sum(dim=1).squeeze().bool()
 
-    pitch_voiced = pitch[:, :, voiced]
+    pitch_voiced = pitch[..., voiced_summed]
     n = pitch_voiced.shape[-1]
 
     pitch_voiced_chunks = pitch_voiced.chunk(n, dim=-1)
-    pitch_list = [chunk.sort()[0] for chunk in pitch_voiced_chunks]
-    pitch_array = torch.vstack(pitch_list).permute(2, 1, 0)
 
-    return pitch_array, voiced.expand(1, pitch_array.shape[1], -1)
+    pitch_list = []
+    sort_indx_list = []
+
+    for chunk in pitch_voiced_chunks:
+        pitch_sorted, sort_indx = chunk.sort(dim=1, descending=True)
+        pitch_list.append(pitch_sorted)
+        sort_indx_list.append(sort_indx)
+
+    pitch_array = torch.vstack(pitch_list).permute(2, 1, 0)
+    voiced_array = torch.vstack(sort_indx_list).permute(2, 1, 0)
+
+    # return pitch_array, voiced.expand(1, pitch_array.shape[1], -1)
+    return pitch_array, torch.gather(voiced[..., voiced_summed], 1, voiced_array)
 
 
 def preprocess(

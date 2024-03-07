@@ -122,7 +122,7 @@ class MutliPitchMetrics:
                 [.1 * i for i in range(10)])))
 
         self.thresholds = thresholds
-        self.frca = [RCA() for _ in range(len(thresholds))]
+        self.frca = [FRCA() for _ in range(len(thresholds))]
         self.frmse = [RMSE() for _ in range(len(thresholds))]
         self.frpa = [RPA() for _ in range(len(thresholds))]
 
@@ -149,17 +149,27 @@ class MutliPitchMetrics:
         ):
             pitch_with_periodicity = pitch.clone()
             pitch_with_periodicity[periodicity < threshold] = 0
+            target[torch.logical_not(target_voiced)] = 0
 
             pitch_array, _ = penn.core.postprocess_pitch_and_sort(
-                    pitch_with_periodicity, target_voiced)
+                    pitch_with_periodicity,
+                    target_voiced)
 
-            target_array, _ = penn.core.postprocess_pitch_and_sort(
+            target_array, target_voiced_compressed = penn.core.postprocess_pitch_and_sort(
                     target, target_voiced)
 
+            # add a very small number to get rid off possible log errors
+            pitch_array[pitch_array == 0] = penn.FMIN + 10e-5
+            target_array[target_array == 0] = penn.FMIN + 10e-5
+            # target_array[torch.logical_not(target_voiced_compressed)] = penn.FMIN + 10e-5
+
+            pitch_cents = penn.convert.frequency_to_cents(pitch_array)
+            target_cents = penn.convert.frequency_to_cents(target_array)
+
             # Update metrics
-            frca.update(pitch_array, target_array)
-            frmse.update(pitch_array, target_array)
-            frpa.update(pitch_array, target_array)
+            frca.update(pitch_cents, target_cents, target_voiced_compressed)
+            frmse.update(pitch_cents, target_cents)
+            frpa.update(pitch_cents, target_cents)
 
     def reset(self):
         for frca, frmse, frpa in zip(
@@ -176,6 +186,91 @@ class MutliPitchMetrics:
 # Individual metrics
 ###############################################################################
 
+class FRCA(torchutil.metrics.Average):
+    """Raw chroma accuracy"""
+    def update(self, predicted, target, target_voiced):
+        target_tmp = target.clone()
+        # store masked values for all the iterations
+        target_masked = torch.zeros(predicted.shape)
+
+        # subtrack each row of predicted from the target
+        for ind in range(penn.PITCH_CATS):
+            # evaluate on per-string basis
+            row = predicted[..., ind, :]
+
+            # Compute pitch difference in cents
+            difference = penn.cents(target_tmp, row)
+
+            try:
+                # Forgive octave errors
+                mask_saver = difference.get_mask()
+                data_saver = difference.get_data()
+                choser_mask = data_saver > (penn.OCTAVE - THRESHOLD)
+                data_saver[choser_mask] -= penn.OCTAVE
+
+                choser_mask = data_saver < -(penn.OCTAVE - THRESHOLD)
+                data_saver[choser_mask] += penn.OCTAVE
+
+                difference = torch.masked.masked_tensor(
+                        data_saver,
+                        mask_saver)
+
+            except AttributeError:
+                # Forgive octave errors
+                difference[difference > (penn.OCTAVE - THRESHOLD)] -= penn.OCTAVE
+                difference[difference < -(penn.OCTAVE - THRESHOLD)] += penn.OCTAVE
+
+            # find minimum value from each 6 strings
+            min_diff_ind = torch.argmin(torch.abs(difference), dim=1)
+
+            try: 
+                min_diff_ind = min_diff_ind.get_data().long()
+            except AttributeError:
+                pass
+
+            min_diff_1hot = torch.nn.functional.one_hot(
+                    min_diff_ind, num_classes=penn.PITCH_CATS).bool()
+            min_diff_1hot = min_diff_1hot.permute(0, 2, 1)
+
+            target_potential = torch.abs(difference) < THRESHOLD
+
+            try: 
+                target_potential = target_potential.get_data()
+            except AttributeError:
+                pass
+
+            # merge minimal diff with those below the treshold
+            target_potential = torch.logical_and(
+                    target_potential, min_diff_1hot)
+
+            # take 0s into account
+            target_validated_zeros = torch.logical_and(
+                    target_potential,
+                    torch.logical_not(target_voiced))
+
+            # remove values that were already used
+            target_validated = torch.logical_and(
+                    target_potential, torch.logical_not(target_masked))
+
+            target_validated = torch.logical_or(
+                    target_validated,
+                    target_validated_zeros)
+
+            # add freshly found differences to the masked target
+            target_masked = torch.logical_or(target_masked, target_validated)
+
+            try:
+                target_tmp = target_tmp.get_data()
+            except AttributeError:
+                pass
+
+            target_tmp = torch.masked.masked_tensor(target_tmp, torch.logical_not(target_masked))
+            # target_tmp[target_masked] = penn.convert.frequency_to_cents(torch.tensor(penn.FMIN + 10e-5))
+
+            # Count predictions that are within 50 cents of target
+            super().update(
+                target_validated.sum(),
+                row.numel())
 
 class F1:
 

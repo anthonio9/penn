@@ -74,7 +74,7 @@ def process_logits(logits: torch.Tensor):
     return new_distributions, figsize
 
 
-def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
+def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None):
     import matplotlib
     import matplotlib.pyplot as plt
 
@@ -121,8 +121,8 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
     axis.set_title(f"track: {stem}")
 
     if bins is not None and voiced is not None:
-        nbins = bins.detach().cpu().numpy()
-        nvoiced = voiced.detach().cpu().numpy()
+        nbins = bins.clone().detach().cpu().numpy()
+        nvoiced = voiced.clone().detach().cpu().numpy()
 
         nbins = nbins.squeeze().T
         nvoiced = nvoiced.squeeze().T
@@ -137,6 +137,20 @@ def logits_matplotlib(logits, bins=None, voiced=None, stem=None):
             axis.plot(nbins_masked[:, nbins_row], 'r--', marker='o', linewidth=.5, markersize=1.5, zorder=1)
 
         if predicted_bins is not None:
+            chunk_offset = penn.SAMPLE_RATE // penn.HOPSIZE
+            metrics = penn.evaluate.MutliPitchMetrics(thresholds=[0.5])
+            metrics.reset()
+            metrics.update(
+                    torch.tensor(pitch), 
+                    torch.tensor(periodicity),
+                    torch.tensor(true_pitch),
+                    voiced.clone().detach().cpu())
+                    # torch.tensor(pitch[..., -chunk_offset:]), 
+                    # torch.tensor(periodicity[..., -chunk_offset:]),
+                    # torch.tensor(true_pitch[..., -chunk_offset:]),
+                    # voiced.clone().detach().cpu()[..., -chunk_offset:])
+            metrics_dict = metrics()
+
             npredicted_bins = predicted_bins.detach().cpu().numpy()
             npredicted_bins = npredicted_bins.squeeze().T
 
@@ -227,7 +241,7 @@ def from_model_and_testset(model, loader, gpu=None, iters=0):
             next(loader)
 
         # Iterate over test set
-        audio, bins, _, voiced, stem = next(loader)
+        audio, bins, pitch, voiced, stem = next(loader)
 
         # Accumulate logits
         logits = []
@@ -258,7 +272,7 @@ def from_model_and_testset(model, loader, gpu=None, iters=0):
             bins = penn.convert.midi_to_organ_key(bins)
             voiced = voiced[..., :penn.PITCH_CATS, :]
 
-        return logits_matplotlib(logits, bins, voiced, stem)
+        return logits_matplotlib(logits, pitch, bins, voiced, stem)
 
 
 def from_testset(checkpoint=None, gpu=None, iters=0):
