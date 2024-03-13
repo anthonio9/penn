@@ -78,6 +78,14 @@ def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None
     import matplotlib
     import matplotlib.pyplot as plt
 
+    chunk_start = int(4.8 * penn.SAMPLE_RATE // penn.HOPSIZE)
+    chunk_end = int(5.4 * penn.SAMPLE_RATE // penn.HOPSIZE)
+
+    logits = logits[chunk_start:chunk_end, ...]
+    true_pitch = true_pitch[..., chunk_start:chunk_end]
+    bins = bins[..., chunk_start:chunk_end]
+    voiced = voiced[..., chunk_start:chunk_end]
+
     distributions, figsize = process_logits(logits)
 
     peak_array = None
@@ -87,8 +95,14 @@ def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None
         peak_array = penn.core.peak_notes_to_peak_array(peak_logits)
     else:
         predicted_bins, pitch, periodicity = penn.postprocess(logits)
+
+        # pitch = pitch[..., chunk_start:chunk_end]
+        # periodicity = periodicity[..., chunk_start:chunk_end]
+
         # predicted_bins, pitch_predicted, voiced_predicted = penn.postprocess_with_periodicity(logits, 0.5)
         # penn.core.postprocess_pitch_and_sort(pitch_predicted, voiced)
+
+    # distributions = distributions[..., chunk_start:chunk_end]
 
     # Change font size
     matplotlib.rcParams.update({'font.size': 10})
@@ -137,19 +151,17 @@ def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None
             axis.plot(nbins_masked[:, nbins_row], 'r--', marker='o', linewidth=.5, markersize=1.5, zorder=1)
 
         if predicted_bins is not None:
-            chunk_offset = penn.SAMPLE_RATE // penn.HOPSIZE
-            metrics = penn.evaluate.MutliPitchMetrics(thresholds=[0.5])
+            # metrics = penn.evaluate.MutliPitchMetrics(thresholds=[0.5])
+            metrics = penn.evaluate.MutliPitchMetrics()
             metrics.reset()
             metrics.update(
                     torch.tensor(pitch), 
                     torch.tensor(periodicity),
                     torch.tensor(true_pitch),
                     voiced.clone().detach().cpu())
-                    # torch.tensor(pitch[..., -chunk_offset:]), 
-                    # torch.tensor(periodicity[..., -chunk_offset:]),
-                    # torch.tensor(true_pitch[..., -chunk_offset:]),
-                    # voiced.clone().detach().cpu()[..., -chunk_offset:])
             metrics_dict = metrics()
+
+            breakpoint()
 
             npredicted_bins = predicted_bins.detach().cpu().numpy()
             npredicted_bins = npredicted_bins.squeeze().T
@@ -179,7 +191,6 @@ def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None
 
             twin = axis.twinx()
             twin.set_ylim(ymin=0, ymax=penn.PITCH_CATS)
-
 
             twin.plot(periodicity_for_plot, 'g:', linewidth=2)
             twin.plot(periodicity_masked, 'm:', linewidth=2)
