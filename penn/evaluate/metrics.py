@@ -123,26 +123,31 @@ class MutliPitchMetrics:
 
         self.thresholds = thresholds
         self.frca = [FRCA() for _ in range(len(thresholds))]
+        self.frca2 = [FRCA2() for _ in range(len(thresholds))]
         self.frmse = [RMSE() for _ in range(len(thresholds))]
         self.frpa = [RPA() for _ in range(len(thresholds))]
 
     def __call__(self):
         result = {}
-        for frca, frmse, frpa, threshold in zip(
+        for frca, frca2, frmse, frpa, threshold in zip(
             self.frca,
+            self.frca2,
             self.frmse,
             self.frpa,
             self.thresholds
         ):
             result |= {
                 f'frca-{threshold:.6f}': frca(),
+                f'frca2-{threshold:.6f}': frca2(),
                 f'frmse-{threshold:.6f}': frmse(),
                 f'frpa-{threshold:.6f}': frpa()}
+
         return result
 
     def update(self, pitch, periodicity, target, target_voiced):
-        for frca, frmse, frpa, threshold in zip(
+        for frca, frca2, frmse, frpa, threshold in zip(
             self.frca,
+            self.frca2,
             self.frmse,
             self.frpa,
             self.thresholds
@@ -168,6 +173,7 @@ class MutliPitchMetrics:
 
             # Update metrics
             frca.update(pitch_cents, target_cents, target_voiced_compressed)
+            frca2.update(pitch_cents, target_cents, target_voiced_compressed)
             frmse.update(pitch_cents, target_cents)
             frpa.update(pitch_cents, target_cents)
 
@@ -185,6 +191,39 @@ class MutliPitchMetrics:
 ###############################################################################
 # Individual metrics
 ###############################################################################
+
+class FRCA2(torchutil.metrics.Average):
+    """Very simple metric checking if ground truth is present
+    in any of the predicted values, no mask"""
+    def update(self, predicted, target, target_voiced):
+        target_tmp = target.clone()
+
+        target_voiced_single = target_voiced.sum(dim=1).bool()
+
+        # subtrack each row of predicted from the target
+        for ind in range(penn.PITCH_CATS):
+            # evaluate on per-string basis, row by row of voiced target
+            voiced_row = target_voiced[..., ind, :].squeeze()
+            target_row = target_tmp[..., ind, voiced_row]
+
+            # evaluate predicted only where target is voiced
+            predicted_tmp = predicted[..., voiced_row]
+
+            # Compute pitch difference in cents
+            difference = penn.cents(predicted_tmp, target_row)
+
+            # Forgive octave errors
+            difference[difference > (penn.OCTAVE - THRESHOLD)] -= penn.OCTAVE
+            difference[difference < -(penn.OCTAVE - THRESHOLD)] += penn.OCTAVE
+
+            difference_under_threshold = torch.abs(difference) < THRESHOLD
+            difference_under_threshold_sum = difference_under_threshold.sum(dim=1)
+            difference_under_threshold_sum = difference_under_threshold_sum.bool()
+
+            # Count predictions that are within 50 cents of target
+            super().update(
+                difference_under_threshold_sum.sum(),
+                target_row.numel())
 
 class FRCA(torchutil.metrics.Average):
     """Raw chroma accuracy"""
