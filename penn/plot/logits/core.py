@@ -78,13 +78,13 @@ def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None
     import matplotlib
     import matplotlib.pyplot as plt
 
-    chunk_start = int(4.8 * penn.SAMPLE_RATE // penn.HOPSIZE)
-    chunk_end = int(5.4 * penn.SAMPLE_RATE // penn.HOPSIZE)
-
-    logits = logits[chunk_start:chunk_end, ...]
-    true_pitch = true_pitch[..., chunk_start:chunk_end]
-    bins = bins[..., chunk_start:chunk_end]
-    voiced = voiced[..., chunk_start:chunk_end]
+    # chunk_start = int(4.8 * penn.SAMPLE_RATE // penn.HOPSIZE)
+    # chunk_end = int(5.4 * penn.SAMPLE_RATE // penn.HOPSIZE)
+    #
+    # logits = logits[chunk_start:chunk_end, ...]
+    # true_pitch = true_pitch[..., chunk_start:chunk_end]
+    # bins = bins[..., chunk_start:chunk_end]
+    # voiced = voiced[..., chunk_start:chunk_end]
 
     distributions, figsize = process_logits(logits)
 
@@ -152,16 +152,14 @@ def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None
 
         if predicted_bins is not None:
             # metrics = penn.evaluate.MutliPitchMetrics(thresholds=[0.5])
-            metrics = penn.evaluate.MutliPitchMetrics()
-            metrics.reset()
-            metrics.update(
-                    torch.tensor(pitch), 
-                    torch.tensor(periodicity),
-                    torch.tensor(true_pitch),
-                    voiced.clone().detach().cpu())
-            metrics_dict = metrics()
-
-            breakpoint()
+            # metrics = penn.evaluate.MutliPitchMetrics()
+            # metrics.reset()
+            # metrics.update(
+            #         torch.tensor(pitch), 
+            #         torch.tensor(periodicity),
+            #         torch.tensor(true_pitch),
+            #         voiced.clone().detach().cpu())
+            # metrics_dict = metrics()
 
             npredicted_bins = predicted_bins.detach().cpu().numpy()
             npredicted_bins = npredicted_bins.squeeze().T
