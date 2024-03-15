@@ -125,14 +125,16 @@ class MutliPitchMetrics:
         self.frca = [FRCA() for _ in range(len(thresholds))]
         self.frca2 = [FRCA2() for _ in range(len(thresholds))]
         self.frmse = [RMSE() for _ in range(len(thresholds))]
+        self.frmse2 = [FRMSE2() for _ in range(len(thresholds))]
         self.frpa = [RPA() for _ in range(len(thresholds))]
 
     def __call__(self):
         result = {}
-        for frca, frca2, frmse, frpa, threshold in zip(
+        for frca, frca2, frmse, frmse2, frpa, threshold in zip(
             self.frca,
             self.frca2,
             self.frmse,
+            self.frmse2,
             self.frpa,
             self.thresholds
         ):
@@ -140,15 +142,17 @@ class MutliPitchMetrics:
                 f'frca-{threshold:.6f}': frca(),
                 f'frca2-{threshold:.6f}': frca2(),
                 f'frmse-{threshold:.6f}': frmse(),
+                f'frmse2-{threshold:.6f}': frmse2(),
                 f'frpa-{threshold:.6f}': frpa()}
 
         return result
 
     def update(self, pitch, periodicity, target, target_voiced):
-        for frca, frca2, frmse, frpa, threshold in zip(
+        for frca, frca2, frmse, frmse2, frpa, threshold in zip(
             self.frca,
             self.frca2,
             self.frmse,
+            self.frmse2,
             self.frpa,
             self.thresholds
         ):
@@ -175,30 +179,59 @@ class MutliPitchMetrics:
             frca.update(pitch_cents, target_cents, target_voiced_compressed)
             frca2.update(pitch_cents, target_cents, target_voiced_compressed)
             frmse.update(pitch_cents, target_cents)
+            frmse2.update(pitch_cents, target_cents, target_voiced_compressed)
             frpa.update(pitch_cents, target_cents)
 
     def reset(self):
-        for frca, frmse, frpa in zip(
+        for frca, frca2, frmse, frmse2, frpa in zip(
             self.frca,
+            self.frca2,
             self.frmse,
+            self.frmse2,
             self.frpa
         ):
             # reset metrics
             frca.reset()
+            frca2.reset()
             frmse.reset()
+            frmse2.reset()
             frpa.reset()
 
 ###############################################################################
 # Individual metrics
 ###############################################################################
 
+class FRMSE2(torchutil.metrics.RMSE):
+    """Raw chroma accuracy"""
+    def update(self, predicted, target, target_voiced):
+        target_tmp = target.clone()
+
+        # subtrack each row of predicted from the target
+        for ind in range(penn.PITCH_CATS):
+            # evaluate on per-string basis, row by row of voiced target
+            voiced_row = target_voiced[..., ind, :].squeeze()
+            target_row = target_tmp[..., ind, voiced_row]
+
+            # evaluate predicted only where target is voiced
+            predicted_tmp = predicted[..., voiced_row]
+
+            # Compute pitch difference in cents row by row, cause it seems that other way does not work well
+            difference = penn.cents(predicted_tmp, target_row)
+
+            # find one minimum in each timestamp - find the string with the note
+            difference_min, indxs_min = difference.abs().min(dim=1, keepdim=True)
+            predicted_row = torch.gather(predicted_tmp, dim=1, index=indxs_min)
+
+            super().update(
+                penn.OCTAVE * torch.log2(predicted_row),
+                penn.OCTAVE * torch.log2(target_row))
+
+
 class FRCA2(torchutil.metrics.Average):
     """Very simple metric checking if ground truth is present
     in any of the predicted values, no mask"""
     def update(self, predicted, target, target_voiced):
         target_tmp = target.clone()
-
-        target_voiced_single = target_voiced.sum(dim=1).bool()
 
         # subtrack each row of predicted from the target
         for ind in range(penn.PITCH_CATS):
