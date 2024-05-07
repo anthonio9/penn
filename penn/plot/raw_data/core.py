@@ -232,5 +232,5 @@ def from_data(data_dir, file_stem):
     pitch_dict = penn.data.preprocess.notes_dict_to_pitch_dict(removed_overhangs)
     # pitch_with_plotly(pitch_dict)
     # edit_with_plotly(pitch_dict)
-    # pitch_stft_with_plotly(pitch_dict, audio_file)
+    pitch_stft_with_plotly(pitch_dict, audio_file)
     pitch_midi_stft_with_plotly(pitch_dict, midi_dict, audio_file)
