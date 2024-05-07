@@ -78,13 +78,13 @@ def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None
     import matplotlib
     import matplotlib.pyplot as plt
 
-    # chunk_start = int(4.8 * penn.SAMPLE_RATE // penn.HOPSIZE)
-    # chunk_end = int(5.4 * penn.SAMPLE_RATE // penn.HOPSIZE)
-    #
-    # logits = logits[chunk_start:chunk_end, ...]
-    # true_pitch = true_pitch[..., chunk_start:chunk_end]
-    # bins = bins[..., chunk_start:chunk_end]
-    # voiced = voiced[..., chunk_start:chunk_end]
+    chunk_start = int(4.8 * penn.SAMPLE_RATE // penn.HOPSIZE)
+    chunk_end = int(5.4 * penn.SAMPLE_RATE // penn.HOPSIZE)
+
+    logits = logits[chunk_start:chunk_end, ...]
+    true_pitch = true_pitch[..., chunk_start:chunk_end]
+    bins = bins[..., chunk_start:chunk_end]
+    voiced = voiced[..., chunk_start:chunk_end]
 
     distributions, figsize = process_logits(logits)
 
@@ -166,7 +166,7 @@ def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None
 
             periodicity_for_mask = periodicity.detach().cpu().numpy()
             periodicity_for_mask = periodicity_for_mask.squeeze().T
-            periodicity_mask = periodicity_for_mask >= 0.5
+            periodicity_mask = periodicity_for_mask >= 0.05
 
             # nvoiced_predicted = voiced_predicted.detach().cpu().numpy()
 
@@ -179,7 +179,7 @@ def logits_matplotlib(logits, true_pitch=None, bins=None, voiced=None, stem=None
         if periodicity is not None:
             periodicity_for_plot = periodicity.detach().cpu().numpy()
             periodicity_for_plot = periodicity_for_plot.squeeze().T
-            periodicity_mask = periodicity_for_plot >= 0.5
+            periodicity_mask = periodicity_for_plot >= 0.05
 
             offset = np.arange(0, penn.PITCH_CATS) * int(not penn.LOSS_MULTI_HOT)
             periodicity_for_plot += offset
