@@ -17,21 +17,21 @@ def parse_args():
         type=Path,
         help='The audio file to plot the logits of')
     parser.add_argument(
-        '--output_file',
+        '--ground_truth_file',
         type=Path,
-        help='The jpg file to save the plot')
+        help='The ground truth file')
     parser.add_argument(
         '--checkpoint',
         type=Path,
         help='The checkpoint file to use for inference')
     parser.add_argument(
+        '--output_file',
+        type=Path,
+        help='The jpg file to save the plot')
+    parser.add_argument(
         '--gpu',
         type=int,
         help='The index of the GPU to use for inference')
-    parser.add_argument(
-        '--iters',
-        type=int,
-        help='Number of dummy iterations on the loader before extracting the data')
     return parser.parse_known_args()[0]
 
 

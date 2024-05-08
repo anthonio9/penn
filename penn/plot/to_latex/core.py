@@ -4,6 +4,9 @@ from os.path import isfile
 
 import penn
 
+
+import torchaudio
+import jams
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -32,14 +35,16 @@ def from_audio(
 
     # Concatenate results
     logits = torch.cat(logits)
+    times = None
 
-    return logits
+    return logits, times
 
 
 def get_ground_truth(ground_truth_file):
     assert isfile(ground_truth_file)
 
-    pitch_dict = extract_pitch(jams_track)
+    jams_track = jams.load(str(ground_truth_file))
+    pitch_dict = penn.plot.raw_data.extract_pitch(jams_track)
     return pitch_dict
 
 
@@ -55,16 +60,8 @@ def from_file_to_file(audio_file, ground_truth_file, checkpoint, output_file=Non
     if checkpoint is None:
         return 
 
-    checkpoint = torch.load(checkpoint, map_location='cpu')
-
-    # Initialize model
-    model = penn.Model()
-
-    # Load from disk
-    model.load_state_dict(checkpoint['model'])
-
     # get logits
-    logits = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
+    pred_freq, pred_times = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
 
     # get the ground truth
     gt = get_ground_truth(ground_truth_file)
@@ -72,7 +69,11 @@ def from_file_to_file(audio_file, ground_truth_file, checkpoint, output_file=Non
     # get the stft of the audio
     audio, sr = torchaudio.load(audio_file)
     audio = audio.cpu().numpy()
-    stft, freqs, times = extract_spectrogram(audio,
+    stft, freqs, times = penn.plot.raw_data.extract_spectrogram(audio,
                                              sr=sr,
                                              window_length=2048*4,
                                              hop_length=penn.data.preprocess.GSET_HOPSIZE)
+
+    # now that we have both ground truth, STFT and the preditcted pitch, plot all with matplotlib and plotly
+    # well, do we have predicted pitch?
+    breakpoint()
