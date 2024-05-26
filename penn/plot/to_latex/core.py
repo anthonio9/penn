@@ -52,9 +52,10 @@ def get_ground_truth(ground_truth_file):
     assert isfile(ground_truth_file)
 
     jams_track = jams.load(str(ground_truth_file))
+    duration = jams_track.file_metadata.duration    
     notes_dict = penn.data.preprocess.jams_to_notes(jams_track)
-    pitch_dict = penn.data.preprocess.notes_dict_to_pitch_dict(notes_dict)
-    return pitch_dict
+    pitch_array, times_array = penn.data.preprocess.notes_dict_to_pitch_array(notes_dict, duration)
+    return pitch_array, times_array
 
 
 def plot_over_gt_with_plotly(audio, sr, pred_freq, pred_times, gt, return_fig=False):
@@ -123,7 +124,7 @@ def from_file_to_file(audio_file, ground_truth_file, checkpoint, output_file=Non
     pred_freq, pred_times = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
 
     # get the ground truth
-    gt = get_ground_truth(ground_truth_file)
+    gt_pitch, gt_times = get_ground_truth(ground_truth_file)
 
     # get the stft of the audio
     audio, sr = torchaudio.load(audio_file)
@@ -133,4 +134,10 @@ def from_file_to_file(audio_file, ground_truth_file, checkpoint, output_file=Non
     # well, do we have predicted pitch?
     # plot_over_gt_with_plotly(audio, sr, pred_freq, pred_times, gt)
     
-    penn.plot.to_latex.mplt.plot_with_matplotlib(audio, sr, pred_freq, pred_times, gt)
+    penn.plot.to_latex.mplt.plot_with_matplotlib(
+            audio=audio,
+            sr=sr,
+            # pitch_pred=pred_freq, 
+            # pred_times=pred_times,
+            gt_pitch=gt_pitch,
+            gt_times=gt_times)
