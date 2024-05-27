@@ -137,7 +137,7 @@ def from_file_to_file(audio_file, ground_truth_file, checkpoint, output_file=Non
     penn.plot.to_latex.mplt.plot_with_matplotlib(
             audio=audio,
             sr=sr,
-            # pitch_pred=pred_freq, 
-            # pred_times=pred_times,
+            pred_pitch=pred_freq, 
+            pred_times=pred_times,
             gt_pitch=gt_pitch,
             gt_times=gt_times)
