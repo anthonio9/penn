@@ -37,25 +37,38 @@ def from_audio(
     logits = torch.cat(logits)
     pitch = None
     times = None
+    periodicity = None
 
     with torchutil.time.context('decode'):
         # pitch is in Hz
         predicted, pitch, periodicity = penn.postprocess(logits)
         pitch = pitch.detach().numpy()[0, ...]
-        pitch = np.split(pitch, pitch.shape[0])
+        # pitch = np.split(pitch, pitch.shape[0])
         times = penn.HOPSIZE_SECONDS * np.arange(pitch[0].shape[-1])
+        periodicity = periodicity.detach().numpy()
 
-    return pitch, times
+    return pitch, times, periodicity
 
 
-def get_ground_truth(ground_truth_file):
+def get_ground_truth(ground_truth_file,
+                     start : float=0,
+                     duration : float=None):
     assert isfile(ground_truth_file)
 
     jams_track = jams.load(str(ground_truth_file))
     duration = jams_track.file_metadata.duration    
     notes_dict = penn.data.preprocess.jams_to_notes(jams_track)
     pitch_array, times_array = penn.data.preprocess.notes_dict_to_pitch_array(notes_dict, duration)
-    return pitch_array, times_array
+
+    start_frame = 0
+    end_frame = -1
+
+    start_frame = np.argmin(np.abs(times_array - start))
+
+    if duration is not None:
+        end_frame = np.argmin(np.abs(times_array - start - duration))
+
+    return pitch_array[..., start_frame:end_frame], times_array[..., start_frame:end_frame]
 
 
 def plot_over_gt_with_plotly(audio, sr, pred_freq, pred_times, gt, return_fig=False):
@@ -113,22 +126,47 @@ def plot_over_gt_with_plotly(audio, sr, pred_freq, pred_times, gt, return_fig=Fa
     fig.show()
     
 
-def from_file_to_file(audio_file, ground_truth_file, checkpoint, output_file=None, gpu=None):
+def from_file_to_file(audio_file,
+                      ground_truth_file,
+                      checkpoint,
+                      output_file=None,
+                      gpu=None,
+                      start : float=0.0,
+                      duration : float=None):
     # Load audio
     audio = penn.load.audio(audio_file)
 
     if checkpoint is None:
         return 
 
+    # get the timestamps in frame numbers
+    start_frame = round(start * penn.SAMPLE_RATE)
+
+    end_frame = -1
+    if duration is not None:
+        end_frame = round((start + duration)* penn.SAMPLE_RATE)
+
+    audio = audio[..., start_frame : end_frame]
+
     # get logits
-    pred_freq, pred_times = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
+    pred_freq, pred_times, periodicity = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
+    pred_times += start
 
     # get the ground truth
-    gt_pitch, gt_times = get_ground_truth(ground_truth_file)
+    gt_pitch, gt_times = get_ground_truth(ground_truth_file, start, duration)
 
     # get the stft of the audio
     audio, sr = torchaudio.load(audio_file)
     audio = audio.cpu().numpy()
+
+    # get the timestamps in frame numbers
+    start_frame = round(start * sr)
+
+    end_frame = -1
+    if duration is not None:
+        end_frame = round((start + duration)* sr)
+
+    audio = audio[..., start_frame:end_frame]
 
     # now that we have both ground truth, STFT and the preditcted pitch, plot all with matplotlib and plotly
     # well, do we have predicted pitch?
@@ -140,4 +178,6 @@ def from_file_to_file(audio_file, ground_truth_file, checkpoint, output_file=Non
             pred_pitch=pred_freq, 
             pred_times=pred_times,
             gt_pitch=gt_pitch,
-            gt_times=gt_times)
+            gt_times=gt_times,
+            periodicity=periodicity, 
+            time_offset=start)

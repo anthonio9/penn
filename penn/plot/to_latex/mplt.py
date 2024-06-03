@@ -8,7 +8,8 @@ def plot_stft(axis : plt.Axes,
               audio,
               sr=penn.SAMPLE_RATE,
               window_length=2048*4,
-              hop_length=penn.data.preprocess.GSET_HOPSIZE):
+              hop_length=penn.data.preprocess.GSET_HOPSIZE,
+              time_offset=0):
     """
     Add a plot of STFT to given audio.
 
@@ -24,6 +25,7 @@ def plot_stft(axis : plt.Axes,
                                              sr=sr,
                                              window_length=window_length,
                                              hop_length=hop_length)
+    times += time_offset
 
     axis.pcolormesh(times, freqs, np.abs(stft), cmap='grey')
     axis.set_ylim([50, 300])
@@ -37,7 +39,9 @@ def plot_pitch(axis : plt.Axes,
                times,
                set_pitch_lims=True,
                plot_red=False,
-               linewidth=1):
+               linewidth=1,
+               periodicity=None,
+               threshold=0.05):
     """
     Add a plot of pitch. Optionally, set the frequency limits based
     on the max i min values of the provided pitch.
@@ -53,17 +57,27 @@ def plot_pitch(axis : plt.Axes,
     max_pitch = []
     min_pitch = []
 
-    pitch_masked = np.ma.MaskedArray(pitch, pitch==0)
+    mask_for_pitch = pitch==0
 
-    for no_slice, pitch_slice in enumerate(pitch_masked):
-        y = pitch_slice.reshape(-1)
+    if periodicity is not None: 
+        periodicity_for_mask = periodicity.squeeze()
+        periodicity_mask = periodicity_for_mask >= threshold
+        mask_for_pitch = np.logical_and(mask_for_pitch, periodicity_for_mask)
+
+    # pitch_masked = np.ma.MaskedArray(pitch, mask_for_pitch)
+    pitch_split = np.split(pitch, pitch.shape[0])
+    mask_split = np.split(mask_for_pitch, mask_for_pitch.shape[0])
+
+    for no_slice, (pitch_slice, mask_slice) in enumerate(zip(pitch_split, mask_split)):
+        pitch_slice = pitch_slice.reshape(-1)
+        y = np.ma.MaskedArray(pitch_slice, mask_slice)
         x = times
 
         # axis.scatter(x, y, label=f"String {no_slice}")
         if plot_red:
             axis.plot(x, y, 'r-', linewidth=linewidth, label=f"String {no_slice}")
         else:
-            axis.plot(x, y, '-', linewidth=linewidth, label=f"String {no_slice}")
+            axis.scatter(x, y, linewidth=linewidth, label=f"String {no_slice}")
 
 
         if pitch_slice.size > 0:
@@ -84,15 +98,32 @@ def plot_pitch(axis : plt.Axes,
     axis.set_xlabel('Time [s]')
 
 
-def plot_periodicity(axis : plt.Axes, periodicity, threshold=None):
+def plot_periodicity(axis : plt.Axes,
+                     periodicity : np.ndarray,
+                     threshold : float=0.05):
     """
     Plot the periodicity plot with or without threshold.
     """
-    if threshold is None:
-        pass
+
+    periodicity_for_plot = periodicity.squeeze().T
+
+    offset = np.arange(0, penn.PITCH_CATS) * int(not penn.LOSS_MULTI_HOT)
+    periodicity_for_plot += offset
+
+    twin = axis.twinx()
+    twin.set_ylim(ymin=0, ymax=penn.PITCH_CATS)
+
+    twin.plot(periodicity_for_plot, 'g:', linewidth=2)
+
+    if threshold is not None:
+        periodicity_mask = periodicity_for_plot >= threshold
+        # mask periodicity under the threshold 
+        periodicity_masked = np.ma.MaskedArray(periodicity_for_plot, np.logical_not(periodicity_mask))
+
+        twin.plot(periodicity_masked, 'm:', linewidth=2)
 
 
-def plot_with_matplotlib(audio, sr=penn.SAMPLE_RATE, pred_pitch=None, pred_times=None, gt_pitch=None, gt_times=None, periodicity=None, threshold=None):
+def plot_with_matplotlib(audio, sr=penn.SAMPLE_RATE, pred_pitch=None, pred_times=None, gt_pitch=None, gt_times=None, periodicity=None, threshold=0.05, time_offset=0):
     """
     Plot stft to the given audio. Optionally put raw pitch data
     or even thresholded periodicity data on top of it.
@@ -107,10 +138,13 @@ def plot_with_matplotlib(audio, sr=penn.SAMPLE_RATE, pred_pitch=None, pred_times
     axis.spines['bottom'].set_visible(False)
     axis.spines['left'].set_visible(False)
 
-    plot_stft(axis, audio, sr)
+    plot_stft(axis, audio, sr, time_offset=time_offset)
 
     if pred_pitch is not None and pred_times is not None:
-        plot_pitch(axis, pred_pitch, pred_times, linewidth=2)
+        plot_pitch(axis, pred_pitch, pred_times,
+                   linewidth=1.5,
+                   periodicity=periodicity,
+                   threshold=0.9)
 
     if gt_pitch is not None and gt_times is not None:
         plot_pitch(axis, gt_pitch, gt_times, plot_red=True)

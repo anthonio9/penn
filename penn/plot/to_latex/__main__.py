@@ -32,6 +32,14 @@ def parse_args():
         '--gpu',
         type=int,
         help='The index of the GPU to use for inference')
+    parser.add_argument(
+        '--start',
+        type=float,
+        help='Start timestamp of the audio file in seconds')
+    parser.add_argument(
+        '--duration',
+        type=float,
+        help='Duration of the audio excerpt in seconds')
     return parser.parse_known_args()[0]
 
 
