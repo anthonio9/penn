@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_stft(axis : plt.Axes,
+def plot_stft(axes : plt.Axes,
               audio,
               sr=penn.SAMPLE_RATE,
               window_length=2048*4,
@@ -19,6 +19,7 @@ def plot_stft(axis : plt.Axes,
         sr - sampling rate
         window_length - length of the moving STFT window
         hop_length - hop step of the moving window in samples
+        time_offset - increase the values of the x axis by given time offset
     """
 
     stft, freqs, times = penn.plot.raw_data.extract_spectrogram(audio,
@@ -27,14 +28,15 @@ def plot_stft(axis : plt.Axes,
                                              hop_length=hop_length)
     times += time_offset
 
-    axis.pcolormesh(times, freqs, np.abs(stft), cmap='grey')
-    axis.set_ylim([50, 300])
-    axis.set_xlim([times[0], times[-1]])
+    for axis in axes:
+        axis.pcolormesh(times, freqs, np.abs(stft), cmap='grey')
+        axis.set_ylim([50, 300])
+        axis.set_xlim([times[0], times[-1]])
 
     # take inspiration from this post: https://dsp.stackexchange.com/a/70136
 
 
-def plot_pitch(axis : plt.Axes,
+def plot_pitch(axes : list(plt.Axes),
                pitch,
                times,
                set_pitch_lims=True,
@@ -53,6 +55,8 @@ def plot_pitch(axis : plt.Axes,
         set_pitch_lims - flag indicating if freqnecy limits are to be adjusted
         plot_red - set true to plot all lines in a red color
         linewidth - set the matplotlib plot line width
+        periodicity - 
+        threshold - threshold for the periodicity plot
     """
     max_pitch = []
     min_pitch = []
@@ -123,34 +127,49 @@ def plot_periodicity(axis : plt.Axes,
         twin.plot(periodicity_masked, 'm:', linewidth=2)
 
 
-def plot_with_matplotlib(audio, sr=penn.SAMPLE_RATE, pred_pitch=None, pred_times=None, gt_pitch=None, gt_times=None, periodicity=None, threshold=0.05, time_offset=0):
+def plot_with_matplotlib(audio, sr=penn.SAMPLE_RATE, pred_pitch=None, pred_times=None, gt_pitch=None, gt_times=None, periodicity=None, threshold=0.05, time_offset=0, mutlipitch=False):
     """
     Plot stft to the given audio. Optionally put raw pitch data
     or even thresholded periodicity data on top of it.
     """
 
-    # Create plot
-    figure, axis = plt.subplots(figsize=(7, 3))
+
+
+    if mutlipitch:
+        # Create plot
+        figure, axes = plt.subplots(nrows=penn.PITCH_CATS,
+                                    ncols=1)
+    else:
+        # Create plot
+        figure, axis = plt.subplots(figsize=(7, 3))
+        axes = [axis]
 
     # Make pretty
-    axis.spines['top'].set_visible(False)
-    axis.spines['right'].set_visible(False)
-    axis.spines['bottom'].set_visible(False)
-    axis.spines['left'].set_visible(False)
+    for axis in axes:
+        axis.spines['top'].set_visible(False)
+        axis.spines['right'].set_visible(False)
+        axis.spines['bottom'].set_visible(False)
+        axis.spines['left'].set_visible(False)
 
-    plot_stft(axis, audio, sr, time_offset=time_offset)
+    plot_stft(axes, audio, sr, time_offset=time_offset)
+
+    # if mutlipitch:
+
 
     if pred_pitch is not None and pred_times is not None:
-        plot_pitch(axis, pred_pitch, pred_times,
+        plot_pitch(axes, pred_pitch, pred_times,
                    linewidth=1.5,
                    periodicity=periodicity,
                    threshold=0.9)
-
-    if gt_pitch is not None and gt_times is not None:
-        plot_pitch(axis, gt_pitch, gt_times, plot_red=True)
-
-    if periodicity is not None:
-        plot_periodicity(axis, periodicity, threshold)
+    #
+    # if gt_pitch is not None and gt_times is not None:
+    #     plot_pitch(axis, gt_pitch, gt_times,
+    #                plot_red=True, 
+    #                mutlipitch=mutlipitch)
+    #
+    # if periodicity is not None:
+    #     plot_periodicity(axis, periodicity, threshold,
+    #                      mutlipitch=mutlipitch)
 
     # figure.show()
     plt.show()

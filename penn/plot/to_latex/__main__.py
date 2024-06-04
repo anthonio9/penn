@@ -35,11 +35,18 @@ def parse_args():
     parser.add_argument(
         '--start',
         type=float,
+        default=0,
         help='Start timestamp of the audio file in seconds')
     parser.add_argument(
         '--duration',
         type=float,
+        default=None,
         help='Duration of the audio excerpt in seconds')
+    parser.add_argument(
+        '-m',
+        '--multipitch',
+        action='store_true',
+        help='Set to make a separate plot for every string')
     return parser.parse_known_args()[0]
 
 
