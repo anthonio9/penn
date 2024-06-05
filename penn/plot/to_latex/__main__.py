@@ -47,6 +47,12 @@ def parse_args():
         '--multipitch',
         action='store_true',
         help='Set to make a separate plot for every string')
+    parser.add_argument(
+        '-t',
+        '--threshold',
+        type=float,
+        default=0.5,
+        help='Periodicity threshold value')
     return parser.parse_known_args()[0]
 
 

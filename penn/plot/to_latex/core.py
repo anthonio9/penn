@@ -133,7 +133,8 @@ def from_file_to_file(audio_file,
                       gpu=None,
                       start : float=0.0,
                       duration : float=None,
-                      multipitch=False):
+                      multipitch=False,
+                      threshold=0.5):
     # Load audio
     audio = penn.load.audio(audio_file)
 
@@ -182,4 +183,5 @@ def from_file_to_file(audio_file,
             gt_times=gt_times,
             periodicity=periodicity, 
             time_offset=start,
-            mutlipitch=multipitch)
+            mutlipitch=multipitch,
+            threshold=threshold)
