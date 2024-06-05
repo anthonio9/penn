@@ -3,6 +3,8 @@ import penn
 import matplotlib.pyplot as plt
 import numpy as np
 
+from typing import List
+
 
 def plot_stft(axes : plt.Axes,
               audio,
@@ -36,7 +38,7 @@ def plot_stft(axes : plt.Axes,
     # take inspiration from this post: https://dsp.stackexchange.com/a/70136
 
 
-def plot_pitch(axes : list(plt.Axes),
+def plot_pitch(axes : List[plt.Axes],
                pitch,
                times,
                set_pitch_lims=True,
@@ -156,11 +158,11 @@ def plot_with_matplotlib(audio, sr=penn.SAMPLE_RATE, pred_pitch=None, pred_times
     # if mutlipitch:
 
 
-    if pred_pitch is not None and pred_times is not None:
-        plot_pitch(axes, pred_pitch, pred_times,
-                   linewidth=1.5,
-                   periodicity=periodicity,
-                   threshold=0.9)
+    # if pred_pitch is not None and pred_times is not None:
+    #     plot_pitch(axes, pred_pitch, pred_times,
+    #                linewidth=1.5,
+    #                periodicity=periodicity,
+    #                threshold=0.9)
     #
     # if gt_pitch is not None and gt_times is not None:
     #     plot_pitch(axis, gt_pitch, gt_times,
