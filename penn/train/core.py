@@ -325,6 +325,7 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
 
 def loss(logits, bins):
     """Compute loss function"""
+    breakpoint()
     # Reshape inputs
     if len(logits.shape) == 4:
         logits = logits.permute(0, 1, 3, 2)
