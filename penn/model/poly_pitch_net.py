@@ -35,6 +35,10 @@ class PolyPitchNet1(PolyPitchNet):
         super().__init__(layers)
 
 
+class PolyPitchNetFCN(PolyPitchNet):
+    pass
+
+
 class PolyPitchNet60x2(PolyPitchNet):
 
     def __init__(self):
