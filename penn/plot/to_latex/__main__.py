@@ -53,6 +53,11 @@ def parse_args():
         type=float,
         default=0.5,
         help='Periodicity threshold value')
+    parser.add_argument(
+        '-l', 
+        '--plot_logits',
+        action='store_true',
+        help='Set to plot model output logits instead of STFT')
     return parser.parse_known_args()[0]
 
 

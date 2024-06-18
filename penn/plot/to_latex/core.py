@@ -47,7 +47,7 @@ def from_audio(
         times = penn.HOPSIZE_SECONDS * np.arange(pitch[0].shape[-1])
         periodicity = periodicity.detach().numpy()
 
-    return pitch, times, periodicity
+    return pitch, times, periodicity, logits
 
 
 def get_ground_truth(ground_truth_file,
@@ -134,7 +134,8 @@ def from_file_to_file(audio_file,
                       start : float=0.0,
                       duration : float=None,
                       multipitch=False,
-                      threshold=0.5):
+                      threshold=0.5,
+                      plot_logits=False):
     # Load audio
     audio = penn.load.audio(audio_file)
 
@@ -151,8 +152,11 @@ def from_file_to_file(audio_file,
     audio = audio[..., start_frame : end_frame]
 
     # get logits
-    pred_freq, pred_times, periodicity = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
+    pred_freq, pred_times, periodicity, logits = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
     pred_times += start
+
+    if not plot_logits:
+        logits = None
 
     # get the ground truth
     gt_pitch, gt_times = get_ground_truth(ground_truth_file, start, duration)
@@ -184,4 +188,5 @@ def from_file_to_file(audio_file,
             periodicity=periodicity, 
             time_offset=start,
             mutlipitch=multipitch,
-            threshold=threshold)
+            threshold=threshold,
+            logits=logits)
