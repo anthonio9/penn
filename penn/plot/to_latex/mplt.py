@@ -73,7 +73,8 @@ def plot_pitch(axis : plt.Axes,
                periodicity=None,
                threshold=0.5,
                ylim=[0, 500],
-               label : str=""):
+               label : str="",
+               set_xlabel=True):
     """
     Add a plot of pitch. Optionally, set the frequency limits based
     on the max i min values of the provided pitch.
@@ -133,7 +134,9 @@ def plot_pitch(axis : plt.Axes,
         axis.set_ylim(ylim)
 
     axis.set_ylabel('Frequency [Hz]')
-    axis.set_xlabel('Time [s]')
+
+    if set_xlabel:
+        axis.set_xlabel('Time [s]')
 
 
 def plot_multipitch(axes : List[plt.Axes],
@@ -163,7 +166,11 @@ def plot_multipitch(axes : List[plt.Axes],
                    linewidth=linewidth,
                    periodicity=periodicity_slice,
                    threshold=threshold,
-                   label=label)
+                   label=label, 
+                   ylim=[0, pitch.max() * 1.2],
+                   set_xlabel=False)
+
+    axes[-1].set_xlabel("Time [s]")
 
 
 def plot_periodicity(axis : plt.Axes,
@@ -187,6 +194,7 @@ def plot_periodicity(axis : plt.Axes,
     # should help with removing the whitespace at the bottom of the plot
 
     twin.plot(times, periodicity_for_plot, 'g:', linewidth=2, label="periodicity")
+    twin.set_ylabel("Periodicity")
 
     if threshold is not None:
         periodicity_mask = periodicity_for_plot >= threshold
@@ -255,14 +263,14 @@ def plot_with_matplotlib(
         if mutlipitch:
             plot_multipitch(
                     axes, pred_pitch, pred_times,
-                    linewidth=1,
+                    linewidth=0.5,
                     periodicity=periodicity,
                     threshold=threshold,
                     label="predicted")
         else:
             plot_pitch(
                     axes[0], pred_pitch, pred_times,
-                    linewidth=1,
+                    linewidth=0.5,
                     periodicity=periodicity,
                     threshold=threshold,
                     label="predicted")
@@ -282,6 +290,9 @@ def plot_with_matplotlib(
     # prepare the legend 
     handles, labels = axes[-1].get_legend_handles_labels()
 
+    for ind, axis in enumerate(axes):
+        axis.set_title(f"String {ind}", x=0.06, y=0.7, color='r')
+
     if periodicity is not None:
         if mutlipitch:
             t_handles, t_labels = plot_multiperiodicity(axes, periodicity, pred_times, threshold)
@@ -294,6 +305,7 @@ def plot_with_matplotlib(
     figure.suptitle(f"Pitch thresholded with periodicity above {threshold}, {title}")
 
     figure.legend(handles, labels, loc='lower right')
+    figure.set_tight_layout({'pad' : 0.5})
 
     # figure.show()
     plt.show()
