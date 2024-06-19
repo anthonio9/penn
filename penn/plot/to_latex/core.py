@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from os.path import isfile
+from os import path
 
 import penn
 
@@ -47,18 +47,34 @@ def from_audio(
         times = penn.HOPSIZE_SECONDS * np.arange(pitch[0].shape[-1])
         periodicity = periodicity.detach().numpy()
 
+    logits = torch.softmax(logits, dim=2)
     return pitch, times, periodicity, logits
 
 
 def get_ground_truth(ground_truth_file,
                      start : float=0,
-                     duration : float=None):
-    assert isfile(ground_truth_file)
+                     duration : float=None,
+                     hop_length_seconds : float=penn.HOPSIZE_SECONDS):
+    assert path.isfile(ground_truth_file)
 
-    jams_track = jams.load(str(ground_truth_file))
-    duration = jams_track.file_metadata.duration    
-    notes_dict = penn.data.preprocess.jams_to_notes(jams_track)
-    pitch_array, times_array = penn.data.preprocess.notes_dict_to_pitch_array(notes_dict, duration)
+    filename, file_extension = path.splitext(ground_truth_file)
+
+    if file_extension == '.npy' and hop_length_seconds is not None:
+        pitch_array = np.load(ground_truth_file)
+        times_array = np.arange(pitch_array.shape[-1]) * hop_length_seconds
+        voiced_path = str(ground_truth_file).replace("pitch", "voiced")
+
+        if path.isfile(voiced_path):
+            voiced_array = np.load(voiced_path)
+            pitch_array[np.logical_not(voiced_array)] = 0
+
+    elif file_extension == '.jams':
+        jams_track = jams.load(str(ground_truth_file))
+        duration = jams_track.file_metadata.duration    
+        notes_dict = penn.data.preprocess.jams_to_notes(jams_track)
+        pitch_array, times_array = penn.data.preprocess.notes_dict_to_pitch_array(notes_dict, duration)
+    else:
+        raise ValueError("File extension is not supported")
 
     start_frame = 0
     end_frame = -1
@@ -139,6 +155,8 @@ def from_file_to_file(audio_file,
     # Load audio
     audio = penn.load.audio(audio_file)
 
+    file_stem = path.basename(audio_file)
+
     if checkpoint is None:
         return 
 
@@ -179,6 +197,7 @@ def from_file_to_file(audio_file,
     # plot_over_gt_with_plotly(audio, sr, pred_freq, pred_times, gt)
     
     penn.plot.to_latex.mplt.plot_with_matplotlib(
+            title=file_stem,
             audio=audio,
             sr=sr,
             pred_pitch=pred_freq, 
