@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-split-voiced'
+CONFIG = 'polypennfcn-split-voiced-big'
 
 # gset only
 DATASETS = ['gset']
@@ -39,3 +39,5 @@ BATCH_SIZE = 32
 NORMALIZATION = 'instance'
 
 FCN = True
+
+DECODER = 'argmax'
