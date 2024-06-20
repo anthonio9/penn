@@ -2,7 +2,7 @@ from .core import *
 from .crepe import Crepe
 from .deepf0 import Deepf0
 from .fcnf0 import Fcnf0
-from .poly_pitch_net import PolyPitchNet1, PolyPitchNet60x2, PolyPENNFCN
+from .poly_pitch_net import PolyPitchNet1, PolyPENNFCN
 
 import penn
 
@@ -17,8 +17,6 @@ def Model(name=penn.MODEL):
         return Fcnf0()
     if name == 'ppn':
         return PolyPitchNet1()
-    if name == 'ppnmidi60x2':
-        return PolyPitchNet60x2()
     if name == 'polypennfcn':
         return PolyPENNFCN()
 

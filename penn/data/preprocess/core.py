@@ -561,22 +561,15 @@ def extract_pitch_array_jams(jam: jams.JAMS, track, uniform=True) -> Tuple[np.nd
       time_steps array is of shape (T, )
       S - number of strings, T - number of time steps
     """
-    if penn.REMOVE_OVERHANGS or penn.MIDI60:
+    if penn.REMOVE_OVERHANGS:
         notes_dict = jams_to_notes(jam)
 
         if penn.REMOVE_OVERHANGS:
             notes_dict = remove_overhangs(notes_dict)
 
-        if penn.MIDI60:
-            pitch_array, offset_array, time_steps_array = notes_dict_to_pitch_array60(
-                    notes_dict, 
-                    jam.file_metadata.duration)
-            pitch_array = np.vstack([pitch_array, offset_array])
-
-        else:
-            pitch_array, time_steps_array = notes_dict_to_pitch_array(
-                    notes_dict,
-                    jam.file_metadata.duration)
+        pitch_array, time_steps_array = notes_dict_to_pitch_array(
+                notes_dict,
+                jam.file_metadata.duration)
 
         return pitch_array, time_steps_array
 
