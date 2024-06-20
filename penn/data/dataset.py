@@ -71,11 +71,7 @@ class Dataset(torch.utils.data.Dataset):
         pitch = torch.from_numpy(pitch)
         voiced = torch.from_numpy(voiced)
 
-        if not penn.MIDI60:
-            # Convert to pitch bin categories
-            bins = penn.convert.frequency_to_bins(pitch)
-        else:
-            bins = pitch
+        bins = penn.convert.frequency_to_bins(pitch)
 
         # Set unvoiced bins to random values
         bins[:penn.PITCH_CATS, :] = torch.where(
@@ -145,11 +141,7 @@ class Dataset(torch.utils.data.Dataset):
         pitch = torch.from_numpy(pitch[..., start:end].copy())
         voiced = torch.from_numpy(voiced[..., start:end].copy())
 
-        if not penn.MIDI60:
-            # Convert to pitch bin categories
-            bins = penn.convert.frequency_to_bins(pitch)
-        else:
-            bins = pitch
+        bins = penn.convert.frequency_to_bins(pitch)
 
         # Set unvoiced bins to random values
         bins[:penn.PITCH_CATS, :] = torch.where(

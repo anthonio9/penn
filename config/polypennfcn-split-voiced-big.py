@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'ppn-split-midi60'
+CONFIG = 'polypennfcn-split-voiced'
 
 # gset only
 DATASETS = ['gset']
@@ -26,20 +26,16 @@ VOICED_ONLY = True
 STRING_INDEX = None
 
 # poly pitch net model
-MODEL = 'ppnmidi60x2'
-
-PITCH_BINS = 60
+MODEL = 'polypennfcn'
 
 PITCH_CATS = 6
 
 GSET_SPLIT_PLAYERS = True
 
-REMOVE_OVERHANGS = True
+NUM_TRAINING_FRAMES = 128 
 
-MIDI60 = True
+BATCH_SIZE = 32 
 
-MIDI_OFFSET_RAND = 36
+NORMALIZATION = 'instance'
 
-GAUSSIAN_BLUR = False
-
-INTERPOLATE_UNVOICED = False
+FCN = True

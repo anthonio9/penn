@@ -275,10 +275,8 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
             # Forward pass
             logits = model(audio.to(device))
 
-            if penn.MIDI60:
-                bins = bins[:, :penn.PITCH_CATS, :]
-                voiced = voiced[:, :penn.PITCH_CATS, :]
-                pitch = pitch[:, :penn.PITCH_CATS, :]
+            if penn.FCN:
+                logits = logits[..., (penn.WINDOW_SIZE // penn.HOPSIZE) - 1 :]
 
             if len(logits.shape) == 4 or penn.LOSS_MULTI_HOT:
                 binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
@@ -325,29 +323,28 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
 
 def loss(logits, bins):
     """Compute loss function"""
-    breakpoint()
     # Reshape inputs
     if len(logits.shape) == 4:
-        logits = logits.permute(0, 1, 3, 2)
-
-        if penn.LOSS_CHUNKED:
-            logits = logits.squeeze(-2)
-            logits_chunks = logits.chunk(penn.PITCH_CATS, dim=1)
-            logits_chunks = [chunk.squeeze(1) for chunk in logits_chunks]
-            logits = torch.stack(logits_chunks, dim=0)
-        elif penn.MIDI60:
-            # fix this
-            logits = logits.squeeze(-2)
-            logits_chunks = logits.chunk(penn.PITCH_CATS, dim=1)
-            logits_chunks = [chunk.squeeze(dim=1) for chunk in logits_chunks]
-
-            # logits_chunks = logits.chunk(logits.shape[0], dim=0)
-            # logits_chunks = [chunk.flatten() for chunk in logits_chunks]
-            logits = torch.vstack(logits_chunks)
+        if penn.FCN:
+            logits = logits.permute(0, 3, 1, 2)
         else:
-            logits = logits.reshape(-1, penn.PITCH_BINS)
+            logits = logits.permute(0, 1, 3, 2)
     else:
-        logits = logits.permute(0, 2, 1).reshape(-1, penn.PITCH_BINS)
+        logits = logits.permute(0, 2, 1)
+
+    # prepend random bins to the ground truth in case of FCN
+    if penn.FCN:
+        no_frames_pred = logits.shape[1]
+        no_frames_gt = bins.shape[-1]
+
+        rand_shape = list(bins.shape)
+        rand_shape[-1] = no_frames_pred - no_frames_gt
+
+        x = torch.randint(size=rand_shape, low=0, high=penn.PITCH_BINS)
+        bins = torch.cat((x, bins), dim=-1)
+        bins = bins.permute(0, 2, 1)
+
+    logits = logits.reshape(-1, penn.PITCH_BINS)
 
     def get_bins(bins):
 
@@ -375,31 +372,14 @@ def loss(logits, bins):
             bins = bins / (bins.max(dim=1, keepdims=True).values + 1e-8)
 
         else:
-            if penn.MIDI60:
-                # bins_chunk = bins.chunk(bins.shape[0], dim=0)
-                # bins_chunk_1hot = [
-                #         torch.nn.functional.one_hot(chunk.flatten(), penn.PITCH_BINS).float().flatten()
-                #         for chunk in bins_chunk]
-                # bins = torch.stack(bins_chunk_1hot, dim=0)
+            bins = bins.flatten()
 
-                bins = bins.flatten()
-
-                # One-hot encoding
-                bins = torch.nn.functional.one_hot(bins, penn.PITCH_BINS).float()
-            else:
-                bins = bins.flatten()
-
-                # One-hot encoding
-                bins = torch.nn.functional.one_hot(bins, penn.PITCH_BINS).float()
+            # One-hot encoding
+            bins = torch.nn.functional.one_hot(bins, penn.PITCH_BINS).float()
 
         return bins
 
-    if penn.LOSS_CHUNKED:
-        bins_chunks = bins.chunk(penn.PITCH_CATS, dim=1)
-        bins_chunks = [get_bins(chunk) for chunk in bins_chunks]
-        bins = torch.stack(bins_chunks)
-
-    elif penn.LOSS_MULTI_HOT:
+    if penn.LOSS_MULTI_HOT:
         bins_chunks = bins.chunk(penn.PITCH_CATS, dim=1)
         bins_chunks = [get_bins(chunk) for chunk in bins_chunks]
         bins = torch.stack(bins_chunks)
@@ -410,37 +390,6 @@ def loss(logits, bins):
         # it may happen that two strings are playing the same note, in that case interpret it as a single note
         bins[bins > 1] = 1
 
-    elif penn.MIDI60:
-        midi_array = penn.convert.midi_to_organ_key(bins[:, :penn.PITCH_CATS, :])
-
-        midi_bins = get_bins(midi_array.long())
-
-        if penn.MODEL == 'ppnmidi60x2':
-            offset_array = bins[:, penn.PITCH_CATS:, :]
-
-            # Set unvoiced bins to random values
-            offset_array = torch.where(
-                offset_array == 0,
-                torch.randint(
-                    -penn.MIDI_OFFSET_LIMIT,
-                    penn.MIDI_OFFSET_LIMIT,
-                    offset_array.shape,
-                    dtype=torch.long)
-                .to(offset_array.device),
-                offset_array)
-
-            # this assumes that the deviation is in range [-100, +100] cents
-            resolution = penn.MIDI_OFFSET_LIMIT*2 / 60
-            offset_array += penn.MIDI_OFFSET_LIMIT
-            offset_array[offset_array < 0] = 0
-            offset_array[offset_array >= penn.MIDI_OFFSET_LIMIT] = penn.MIDI_OFFSET_LIMIT - 1
-            offset_array = torch.round(offset_array / resolution)
-            offset_bins = get_bins(offset_array.long())
-
-            bins = torch.vstack([midi_bins, offset_bins])
-        else:
-            bins = midi_bins
-        
     else: 
         bins = get_bins(bins)
 

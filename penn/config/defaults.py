@@ -168,9 +168,6 @@ LEARNING_RATE = 2e-4
 # Loss function
 LOSS = 'categorical_cross_entropy'
 
-# Loss chunk
-LOSS_CHUNKED = False
-
 # Loss mutli-hot
 LOSS_MULTI_HOT = False
 
@@ -200,7 +197,7 @@ REMOVE_OVERHANGS_DIVIDER = None
 
 REMOVE_OVERHANGS_THRESHOLD = None
 
-MIDI60 = False
+FCN = False
 
 MIDI_OFFSET_LIMIT = 200
 
