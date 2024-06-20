@@ -455,10 +455,6 @@ def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
             torch.tensor(fmax),
             torch.ceil)
 
-        if penn.MIDI60:
-            minidx = 0
-            maxidx = penn.PITCH_BINS - 1
-
         # Remove frequencies outside of allowable range
         # below works with shapes [128, 1440, 1] and [128, 6, 1440, 1]
         logits[..., :minidx, :] = -float('inf')

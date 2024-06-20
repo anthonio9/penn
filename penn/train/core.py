@@ -341,6 +341,7 @@ def loss(logits, bins):
         rand_shape[-1] = no_frames_pred - no_frames_gt
 
         x = torch.randint(size=rand_shape, low=0, high=penn.PITCH_BINS)
+        x = x.to(bins.device)
         bins = torch.cat((x, bins), dim=-1)
         bins = bins.permute(0, 2, 1)
 

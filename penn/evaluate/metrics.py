@@ -53,9 +53,6 @@ class Metrics:
         # Update loss
         self.loss.update(logits[:, :penn.PITCH_BINS], bins.T)
 
-        if penn.MIDI60:
-            bins = penn.convert.midi_to_organ_key(bins)
-
         with torchutil.time.context('decode'):
             predicted, pitch, periodicity = penn.postprocess(logits)
 
