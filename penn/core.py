@@ -530,10 +530,17 @@ def postprocess_pitch_and_sort(pitch, voiced):
     """
     voiced_summed = voiced.sum(dim=1).squeeze().bool()
 
-    pitch_voiced = pitch[..., voiced_summed]
-    n = pitch_voiced.shape[-1]
+    if penn.FCN:
+        breakpoint()
+        pitch_tmp = pitch.permute(1, 0, 2)
+        pitch_voiced = pitch_tmp[..., voiced_summed]
+    else:
+        pitch_voiced = pitch[..., voiced_summed]
+        n = pitch_voiced.shape[-1]
 
-    pitch_voiced_chunks = pitch_voiced.chunk(n, dim=-1)
+        pitch_voiced_chunks = pitch_voiced.chunk(n, dim=-1)
+
+    breakpoint()
 
     pitch_list = []
     sort_indx_list = []

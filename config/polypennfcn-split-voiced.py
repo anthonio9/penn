@@ -39,3 +39,5 @@ BATCH_SIZE = 64
 NORMALIZATION = 'instance'
 
 FCN = True
+
+DECODER = 'argmax'
