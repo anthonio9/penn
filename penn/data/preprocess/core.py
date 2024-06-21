@@ -561,7 +561,7 @@ def extract_pitch_array_jams(jam: jams.JAMS, track, uniform=True) -> Tuple[np.nd
       time_steps array is of shape (T, )
       S - number of strings, T - number of time steps
     """
-    if penn.REMOVE_OVERHANGS:
+    if penn.REMOVE_OVERHANGS or penn.MIDI60:
         notes_dict = jams_to_notes(jam)
 
         if penn.REMOVE_OVERHANGS:

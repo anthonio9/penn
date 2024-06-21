@@ -275,8 +275,8 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
             # Forward pass
             logits = model(audio.to(device))
 
-            if penn.FCN:
-                logits = logits[..., (penn.WINDOW_SIZE // penn.HOPSIZE) - 1 :]
+            # if penn.FCN:
+            #     logits = logits[..., (penn.WINDOW_SIZE // penn.HOPSIZE) - 1 :]
 
             if len(logits.shape) == 4 or penn.LOSS_MULTI_HOT:
                 binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
@@ -333,17 +333,17 @@ def loss(logits, bins):
         logits = logits.permute(0, 2, 1)
 
     # prepend random bins to the ground truth in case of FCN
-    if penn.FCN:
-        no_frames_pred = logits.shape[1]
-        no_frames_gt = bins.shape[-1]
-
-        rand_shape = list(bins.shape)
-        rand_shape[-1] = no_frames_pred - no_frames_gt
-
-        x = torch.randint(size=rand_shape, low=0, high=penn.PITCH_BINS)
-        x = x.to(bins.device)
-        bins = torch.cat((x, bins), dim=-1)
-        bins = bins.permute(0, 2, 1)
+    # if penn.FCN:
+    #     no_frames_pred = logits.shape[1]
+    #     no_frames_gt = bins.shape[-1]
+    #
+    #     rand_shape = list(bins.shape)
+    #     rand_shape[-1] = no_frames_pred - no_frames_gt
+    #
+    #     x = torch.randint(size=rand_shape, low=0, high=penn.PITCH_BINS)
+    #     x = x.to(bins.device)
+    #     bins = torch.cat((x, bins), dim=-1)
+    #     bins = bins.permute(0, 2, 1)
 
     logits = logits.reshape(-1, penn.PITCH_BINS)
 

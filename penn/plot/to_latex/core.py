@@ -173,6 +173,8 @@ def from_file_to_file(audio_file,
     pred_freq, pred_times, periodicity, logits = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
     pred_times += start
 
+    breakpoint()
+
     if not plot_logits:
         logits = None
 
