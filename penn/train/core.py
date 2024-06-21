@@ -325,8 +325,6 @@ def loss(logits, bins):
         # [BS, PITCH_CATS, T] => [BS, T, PITCH_CATS]
         bins = bins.permute(0, 2, 1)
 
-    breakpoint()
-
     # if penn.FCN:
     #     no_frames_pred = logits.shape[1]
     #     no_frames_gt = bins.shape[-1]

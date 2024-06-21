@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-split-voiced-big'
+CONFIG = 'polypennfcn-small-window'
 
 # gset only
 DATASETS = ['gset']

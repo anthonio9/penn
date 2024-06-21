@@ -12,7 +12,10 @@ import penn
 def argmax(logits):
     """Decode pitch using argmax"""
     # Get pitch bins
-    bins = logits.argmax(dim=-2)
+    if penn.FCN:
+        bins = logits.argmax(dim=-1)
+    else:
+        bins = logits.argmax(dim=-2)
 
     # Convert to hz
     pitch = penn.convert.bins_to_frequency(bins)
