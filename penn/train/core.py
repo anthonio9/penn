@@ -164,19 +164,19 @@ def train(datasets, directory, gpu=None, use_wand=False):
                     step=step,
                     epoch=epoch)
 
-                fig = penn.plot.logits.from_model_and_testset(
-                        model=model,
-                        loader=test_loader,
-                        gpu=gpu)
+                #fig = penn.plot.logits.from_model_and_testset(
+                #        model=model,
+                #        loader=test_loader,
+                #        gpu=gpu)
 
-                fig2 = penn.plot.logits.from_model_and_testset(
-                        model=model,
-                        loader=train_loader_for_plots,
-                        gpu=gpu)
+                #fig2 = penn.plot.logits.from_model_and_testset(
+                #        model=model,
+                #        loader=train_loader_for_plots,
+                #        gpu=gpu)
 
-                if use_wand:
-                    log_wandb.log({"test_logits": wandb.Image(fig)})
-                    log_wandb.log({"train_logits": wandb.Image(fig2)})
+                #if use_wand:
+                #    log_wandb.log({"test_logits": wandb.Image(fig)})
+                #    log_wandb.log({"train_logits": wandb.Image(fig2)})
 
             # Evaluate
             if step % penn.LOG_INTERVAL == 0:
