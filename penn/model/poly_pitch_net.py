@@ -42,6 +42,7 @@ class PolyPENNFCN(PolyPitchNet):
         # frames shape [BATCH_SIZE, FRAMES, FRAME_LENGTH]
         # FRAMES dimention is made out of initial frames and the actual frames which are present in the ground truth. Meaning that the first few frames made out of penn.WINDOW_SIZE do not translate into ground truth at all and should be randomize on the ground truth side.
         frames = torch.stack(frames_list, dim=1)
+        # [BS, T, HOPSIZE] => [BS, HOPSIZE, T]
         frames = torch.permute(frames, (0, 2, 1))
 
         logits = torch.nn.Sequential.forward(self, frames)
@@ -51,6 +52,9 @@ class PolyPENNFCN(PolyPitchNet):
 
         # shape [128, 6, 1440, *]
         logits = torch.stack(logits_chunks, dim=1)
+
+        # [BS, PITCH_CATS, PITCH_BINS, HOPSIZE] => [BS, HOPSIZE, PITCH_CATS, PITCH_BINS]
+        logits = logits.permute(0, 3, 1, 2)
         return logits
 
     def __init__(self):

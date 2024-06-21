@@ -325,14 +325,15 @@ def loss(logits, bins):
     """Compute loss function"""
     # Reshape inputs
     if len(logits.shape) == 4:
-        if penn.FCN:
-            logits = logits.permute(0, 3, 1, 2)
-        else:
+        if not penn.FCN:
             logits = logits.permute(0, 1, 3, 2)
     else:
         logits = logits.permute(0, 2, 1)
 
-    # prepend random bins to the ground truth in case of FCN
+    if penn.FCN:
+        # [BS, PITCH_CATS, T] => [BS, T, PITCH_CATS]
+        bins = bins.permute(0, 2, 1)
+
     # if penn.FCN:
     #     no_frames_pred = logits.shape[1]
     #     no_frames_gt = bins.shape[-1]
