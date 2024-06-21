@@ -6,6 +6,32 @@ import numpy as np
 from typing import List
 
 
+def plot_logits(axes : plt.Axes,
+                logits : np.ndarray, 
+                hop_length_seconds=penn.HOPSIZE_SECONDS,
+                time_offset=0):
+    """
+    Add a plot of logits
+
+    Parameters:
+        axis - matplotlib pyplot figure axis to have the STFT plot
+        logits - a numpy array representing the model output layer
+    """
+    logits = logits.squeeze()
+
+    # divide logits into strings
+    logits_chunks = np.split(logits, logits.shape[1], axis=1)
+
+    freqs = penn.convert.bins_to_frequency(np.arange(logits.shape[-1]))
+    times = np.arange(logits.shape[0]) * hop_length_seconds + time_offset
+
+    for axis, logits_chunk in zip(axes, logits_chunks):
+        logits_chunk = logits_chunk.squeeze(axis=1).T
+        axis.pcolormesh(times, freqs, logits_chunk)
+        axis.set_ylim([0, 500])
+        axis.set_xlim([times[0], times[-1]])
+
+
 def plot_stft(axes : plt.Axes,
               audio,
               sr=penn.SAMPLE_RATE,
@@ -45,7 +71,10 @@ def plot_pitch(axis : plt.Axes,
                plot_red=False,
                linewidth=1,
                periodicity=None,
-               threshold=0.5):
+               threshold=0.5,
+               ylim=[0, 500],
+               label : str="",
+               set_xlabel=True):
     """
     Add a plot of pitch. Optionally, set the frequency limits based
     on the max i min values of the provided pitch.
@@ -81,27 +110,33 @@ def plot_pitch(axis : plt.Axes,
 
         # axis.scatter(x, y, label=f"String {no_slice}")
         if plot_red:
-            axis.plot(x, y, 'r-', linewidth=linewidth, label=f"String {no_slice}")
+            axis.plot(x, y, 'r-', linewidth=linewidth, label=label)
         else:
-            axis.scatter(x, y, linewidth=linewidth, label=f"String {no_slice}")
+            axis.scatter(x, y, linewidth=linewidth, label=label)
 
 
         if pitch_slice.size > 0:
             max_pitch.append(pitch_slice.max())
             min_pitch.append(pitch_slice.min())
 
-    ymax = max(max_pitch)
-    ymin = min(min_pitch)
+    if ylim is None:
 
-    offset = (ymax - ymin) * 0.1
-    ymax += offset
-    ymin -= offset
+        ymax = max(max_pitch)
+        ymin = min(min_pitch)
+
+        offset = (ymax - ymin) * 0.1
+        ymax += offset
+        ymin -= offset
+
+        ylim = [ymin, ymax]
 
     if set_pitch_lims:
-        axis.set_ylim([ymin, ymax])
+        axis.set_ylim(ylim)
 
     axis.set_ylabel('Frequency [Hz]')
-    axis.set_xlabel('Time [s]')
+
+    if set_xlabel:
+        axis.set_xlabel('Time [s]')
 
 
 def plot_multipitch(axes : List[plt.Axes],
@@ -111,7 +146,8 @@ def plot_multipitch(axes : List[plt.Axes],
                     plot_red=False,
                     linewidth=1,
                     periodicity : np.ndarray=None,
-                    threshold=0.5):
+                    threshold=0.5, 
+                    label : str=""):
 
     pitch_split = np.split(pitch, pitch.shape[0])
 
@@ -129,7 +165,12 @@ def plot_multipitch(axes : List[plt.Axes],
                    plot_red=plot_red,
                    linewidth=linewidth,
                    periodicity=periodicity_slice,
-                   threshold=threshold)
+                   threshold=threshold,
+                   label=label, 
+                   ylim=[0, pitch.max() * 1.2],
+                   set_xlabel=False)
+
+    axes[-1].set_xlabel("Time [s]")
 
 
 def plot_periodicity(axis : plt.Axes,
@@ -152,14 +193,18 @@ def plot_periodicity(axis : plt.Axes,
     # this https://stackoverflow.com/a/27198519/11287083
     # should help with removing the whitespace at the bottom of the plot
 
-    twin.plot(times, periodicity_for_plot, 'g:', linewidth=2)
+    twin.plot(times, periodicity_for_plot, 'g:', linewidth=2, label="periodicity")
+    twin.set_ylabel("Periodicity")
 
     if threshold is not None:
         periodicity_mask = periodicity_for_plot >= threshold
         # mask periodicity under the threshold 
         periodicity_masked = np.ma.MaskedArray(periodicity_for_plot, np.logical_not(periodicity_mask))
 
-        twin.plot(times, periodicity_masked, 'm:', linewidth=2)
+        twin.plot(times, periodicity_masked, 'm:', linewidth=2, label="periodicity thresholded")
+        handles, labels = twin.get_legend_handles_labels()
+
+    return handles, labels
 
 
 def plot_multiperiodicity(axes : List[plt.Axes],
@@ -170,10 +215,24 @@ def plot_multiperiodicity(axes : List[plt.Axes],
     periodicity_list = np.split(periodicity, periodicity.shape[0])
 
     for axis, periodicity_slice in zip(axes, periodicity_list):
-        plot_periodicity(axis, periodicity_slice, times, threshold)
+        handles, labels = plot_periodicity(axis, periodicity_slice, times, threshold)
+
+    return handles, labels
 
 
-def plot_with_matplotlib(audio, sr=penn.SAMPLE_RATE, pred_pitch=None, pred_times=None, gt_pitch=None, gt_times=None, periodicity=None, threshold=0.05, time_offset=0, mutlipitch=False):
+def plot_with_matplotlib(
+        audio,
+        title="",
+        sr=penn.SAMPLE_RATE,
+        pred_pitch=None,
+        pred_times=None,
+        gt_pitch=None,
+        gt_times=None,
+        periodicity=None,
+        threshold=0.05,
+        time_offset=0,
+        mutlipitch=False,
+        logits=None):
     """
     Plot stft to the given audio. Optionally put raw pitch data
     or even thresholded periodicity data on top of it.
@@ -195,39 +254,58 @@ def plot_with_matplotlib(audio, sr=penn.SAMPLE_RATE, pred_pitch=None, pred_times
         axis.spines['bottom'].set_visible(False)
         axis.spines['left'].set_visible(False)
 
-    plot_stft(axes, audio, sr, time_offset=time_offset)
+    if logits is not None:
+        plot_logits(axes, logits, time_offset=time_offset)
+    else:
+        plot_stft(axes, audio, sr, time_offset=time_offset)
 
     if pred_pitch is not None and pred_times is not None:
         if mutlipitch:
             plot_multipitch(
                     axes, pred_pitch, pred_times,
-                    linewidth=1.5,
+                    linewidth=0.5,
                     periodicity=periodicity,
-                    threshold=threshold)
+                    threshold=threshold,
+                    label="predicted")
         else:
             plot_pitch(
                     axes[0], pred_pitch, pred_times,
-                    linewidth=1.5,
+                    linewidth=0.5,
                     periodicity=periodicity,
-                    threshold=threshold)
+                    threshold=threshold,
+                    label="predicted")
 
     if gt_pitch is not None and gt_times is not None:
         if mutlipitch:
             plot_multipitch(
                     axes, gt_pitch, gt_times,
-                    plot_red=True)
+                    plot_red=True,
+                    label="truth")
         else:
             plot_pitch(
                     axes[0], gt_pitch, gt_times,
-                    plot_red=True)
+                    plot_red=True,
+                    label="truth")
+
+    # prepare the legend 
+    handles, labels = axes[-1].get_legend_handles_labels()
+
+    for ind, axis in enumerate(axes):
+        axis.set_title(f"String {ind}", x=0.06, y=0.7, color='r')
 
     if periodicity is not None:
         if mutlipitch:
-            plot_multiperiodicity(axes, periodicity, pred_times, threshold)
+            t_handles, t_labels = plot_multiperiodicity(axes, periodicity, pred_times, threshold)
         else:
-            plot_periodicity(axes[0], periodicity, pred_times, threshold)
+            t_handles, t_labels = plot_periodicity(axes[0], periodicity, pred_times, threshold)
 
-    figure.suptitle(f"Pitch thresholded with periodicity above {threshold}")
+        handles.extend(t_handles)
+        labels.extend(t_labels)
+
+    figure.suptitle(f"Pitch thresholded with periodicity above {threshold}, {title}")
+
+    figure.legend(handles, labels, loc='lower right')
+    figure.set_tight_layout({'pad' : 0.5})
 
     # figure.show()
     plt.show()
