@@ -53,8 +53,8 @@ class PolyPENNFCN(PolyPitchNet):
         # shape [128, 6, 1440, *]
         logits = torch.stack(logits_chunks, dim=1)
 
-        # [BS, PITCH_CATS, PITCH_BINS, HOPSIZE] => [BS, HOPSIZE, PITCH_CATS, PITCH_BINS]
-        logits = logits.permute(0, 3, 1, 2)
+        # [BS, PITCH_CATS, PITCH_BINS, T] => [BS, PITCH_CATS, T, PITCH_BINS]
+        logits = logits.permute(0, 1, 3, 2)
         return logits
 
     def __init__(self):

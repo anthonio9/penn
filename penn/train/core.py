@@ -275,28 +275,16 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
             # Forward pass
             logits = model(audio.to(device))
 
-            # if penn.FCN:
-            #     logits = logits[..., (penn.WINDOW_SIZE // penn.HOPSIZE) - 1 :]
+            binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
+            pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
+            voicedT = voiced.permute(*torch.arange(voiced.ndim - 1, -1, -1))
 
-            if len(logits.shape) == 4 or penn.LOSS_MULTI_HOT:
-                binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
-                pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
-                voicedT = voiced.permute(*torch.arange(voiced.ndim - 1, -1, -1))
-
-                # Update metrics
-                metrics.update(
-                    logits.to(device),
-                    binsT.to(device),
-                    pitchT.to(device),
-                    voicedT.to(device))
-
-            else:
-                # Update metrics
-                metrics.update(
-                    logits.to(device),
-                    bins.T.to(device),
-                    pitch.T.to(device),
-                    voiced.T.to(device))
+            # Update metrics
+            metrics.update(
+                logits.to(device),
+                binsT.to(device),
+                pitchT.to(device),
+                voicedT.to(device))
 
             # Stop when we exceed some number of batches
             if i + 1 == penn.LOG_STEPS:
@@ -325,14 +313,19 @@ def loss(logits, bins):
     """Compute loss function"""
     # Reshape inputs
     if len(logits.shape) == 4:
-        if not penn.FCN:
+        if penn.FCN:
+            logits = logits.permute(0, 2, 1, 3)
+        else:
             logits = logits.permute(0, 1, 3, 2)
+            
     else:
         logits = logits.permute(0, 2, 1)
 
     if penn.FCN:
         # [BS, PITCH_CATS, T] => [BS, T, PITCH_CATS]
         bins = bins.permute(0, 2, 1)
+
+    breakpoint()
 
     # if penn.FCN:
     #     no_frames_pred = logits.shape[1]
