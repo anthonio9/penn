@@ -12,16 +12,10 @@ import penn
 
 def entropy(logits):
     """Entropy-based periodicity"""
-    if penn.FCN:
-        distribution = torch.nn.functional.softmax(logits, dim=-1)
-        return (
-            1 + 1 / math.log(penn.PITCH_BINS) * \
-            (distribution * torch.log(distribution + 1e-7)).sum(dim=-1))
-    else:
-        distribution = torch.nn.functional.softmax(logits, dim=-2)
-        return (
-            1 + 1 / math.log(penn.PITCH_BINS) * \
-            (distribution * torch.log(distribution + 1e-7)).sum(dim=-2))
+    distribution = torch.nn.functional.softmax(logits, dim=-2)
+    return (
+        1 + 1 / math.log(penn.PITCH_BINS) * \
+        (distribution * torch.log(distribution + 1e-7)).sum(dim=-2))
 
 
 def max(logits):
