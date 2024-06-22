@@ -30,8 +30,15 @@ def from_audio(
         # Copy to device
         frames = frames.to('cpu' if gpu is None else f'cuda:{gpu}')
 
+        if penn.FCN:
+            chunks = frames.shape[0]
+            frames_chunks = frames.chunk(chunks, dim=0)
+            frames = torch.cat(frames_chunks, dim=-1)
+
         # Infer
         logits.append(penn.infer(frames, checkpoint=checkpoint).detach())
+
+    breakpoint()
 
     # Concatenate results
     if penn.FCN:

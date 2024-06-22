@@ -43,3 +43,6 @@ NORMALIZATION = 'instance'
 FCN = True
 
 DECODER = 'argmax'
+
+# Batch size to use for evaluation
+EVALUATION_BATCH_SIZE = None

@@ -275,6 +275,8 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
             # Forward pass
             logits = model(audio.to(device))
 
+            breakpoint()
+
             binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
             pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
             voicedT = voiced.permute(*torch.arange(voiced.ndim - 1, -1, -1))
@@ -313,29 +315,10 @@ def loss(logits, bins):
     """Compute loss function"""
     # Reshape inputs
     if len(logits.shape) == 4:
-        if penn.FCN:
-            logits = logits.permute(0, 2, 1, 3)
-        else:
-            logits = logits.permute(0, 1, 3, 2)
+        logits = logits.permute(0, 1, 3, 2)
             
     else:
         logits = logits.permute(0, 2, 1)
-
-    if penn.FCN:
-        # [BS, PITCH_CATS, T] => [BS, T, PITCH_CATS]
-        bins = bins.permute(0, 2, 1)
-
-    # if penn.FCN:
-    #     no_frames_pred = logits.shape[1]
-    #     no_frames_gt = bins.shape[-1]
-    #
-    #     rand_shape = list(bins.shape)
-    #     rand_shape[-1] = no_frames_pred - no_frames_gt
-    #
-    #     x = torch.randint(size=rand_shape, low=0, high=penn.PITCH_BINS)
-    #     x = x.to(bins.device)
-    #     bins = torch.cat((x, bins), dim=-1)
-    #     bins = bins.permute(0, 2, 1)
 
     logits = logits.reshape(-1, penn.PITCH_BINS)
 

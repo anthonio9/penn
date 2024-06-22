@@ -37,12 +37,7 @@ class PolyPitchNet1(PolyPitchNet):
 
 class PolyPENNFCN(PolyPitchNet):
     def forward(self, frames : torch.Tensor):
-
-        if not self.training:
-            frames = frames.reshape(1, -1)
-
-        if frames.shape[0] != 1:
-            frames = frames.squeeze()
+        frames = frames.squeeze(dim=1)
 
         frames_list = torch.chunk(frames, chunks=frames.shape[-1] // penn.HOPSIZE, dim=-1)
         # frames shape [BATCH_SIZE, FRAMES, FRAME_LENGTH]
@@ -60,7 +55,7 @@ class PolyPENNFCN(PolyPitchNet):
         logits = torch.stack(logits_chunks, dim=1)
 
         # [BS, PITCH_CATS, PITCH_BINS, T] => [BS, PITCH_CATS, T, PITCH_BINS]
-        logits = logits.permute(0, 1, 3, 2)
+        # logits = logits.permute(0, 1, 3, 2)
         return logits
 
     def __init__(self):
