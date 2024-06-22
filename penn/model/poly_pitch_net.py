@@ -37,7 +37,13 @@ class PolyPitchNet1(PolyPitchNet):
 
 class PolyPENNFCN(PolyPitchNet):
     def forward(self, frames : torch.Tensor):
-        frames = frames.squeeze()
+
+        if not self.training:
+            frames = frames.reshape(1, -1)
+
+        if frames.shape[0] != 1:
+            frames = frames.squeeze()
+
         frames_list = torch.chunk(frames, chunks=frames.shape[-1] // penn.HOPSIZE, dim=-1)
         # frames shape [BATCH_SIZE, FRAMES, FRAME_LENGTH]
         # FRAMES dimention is made out of initial frames and the actual frames which are present in the ground truth. Meaning that the first few frames made out of penn.WINDOW_SIZE do not translate into ground truth at all and should be randomize on the ground truth side.

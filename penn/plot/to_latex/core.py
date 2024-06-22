@@ -34,7 +34,11 @@ def from_audio(
         logits.append(penn.infer(frames, checkpoint=checkpoint).detach())
 
     # Concatenate results
-    logits = torch.cat(logits)
+    if penn.FCN:
+        logits = torch.cat(logits, dim=-2)
+        logits = logits.permute(2, 1, 3, 0)
+    else:
+        logits = torch.cat(logits)
     pitch = None
     times = None
     periodicity = None
@@ -172,8 +176,6 @@ def from_file_to_file(audio_file,
     # get logits
     pred_freq, pred_times, periodicity, logits = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
     pred_times += start
-
-    breakpoint()
 
     if not plot_logits:
         logits = None
