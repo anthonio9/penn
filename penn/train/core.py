@@ -275,8 +275,6 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
             # Forward pass
             logits = model(audio.to(device))
 
-            breakpoint()
-
             binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
             pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
             voicedT = voiced.permute(*torch.arange(voiced.ndim - 1, -1, -1))
