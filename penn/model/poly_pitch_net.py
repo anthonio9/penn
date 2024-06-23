@@ -61,12 +61,12 @@ class PolyPENNFCN(PolyPitchNet):
     def __init__(self):
         layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
         layers += (
-            Block(penn.HOPSIZE, 256, kernel_size=3, padding=1),
-            Block(256, 32, kernel_size=3, padding=1),
-            Block(32, 32, kernel_size=3, padding=1),
-            Block(32, 128, kernel_size=3, padding=1),
-            Block(128, 256, kernel_size=3, padding=1),
-            Block(256, 512, kernel_size=3, padding=1),
+            Block(penn.HOPSIZE, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(256, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(32, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(32, 128, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(128, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(256, 512, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             torch.nn.Conv1d(512, penn.PITCH_BINS * penn.PITCH_CATS, 1))
         super().__init__(layers)
 

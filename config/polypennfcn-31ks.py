@@ -47,6 +47,6 @@ DECODER = 'argmax'
 # Batch size to use for evaluation
 EVALUATION_BATCH_SIZE = None
 
-KERNEL_SIZE = 3
+KERNEL_SIZE = 31
 
-PADDING_SIZE = 1
+PADDING_SIZE = 15
