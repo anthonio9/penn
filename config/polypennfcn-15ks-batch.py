@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-15ks-drop'
+CONFIG = 'polypennfcn-15ks-batch'
 
 # gset only
 DATASETS = ['gset']
