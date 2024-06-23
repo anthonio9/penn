@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-small-window'
+CONFIG = 'polypennfcn-7ks'
 
 # gset only
 DATASETS = ['gset']
