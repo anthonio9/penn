@@ -91,7 +91,6 @@ def plot_pitch(axis : plt.Axes,
     """
     max_pitch = []
     min_pitch = []
-    breakpoint()
 
     mask_for_pitch = pitch!=0
 
@@ -260,22 +259,22 @@ def plot_with_matplotlib(
     else:
         plot_stft(axes, audio, sr, time_offset=time_offset)
 
-    # if pred_pitch is not None and pred_times is not None:
-    #     if mutlipitch:
-    #         plot_multipitch(
-    #                 axes, pred_pitch, pred_times,
-    #                 linewidth=0.5,
-    #                 periodicity=periodicity,
-    #                 threshold=threshold,
-    #                 label="predicted")
-    #     else:
-    #         plot_pitch(
-    #                 axes[0], pred_pitch, pred_times,
-    #                 linewidth=0.5,
-    #                 periodicity=periodicity,
-    #                 threshold=threshold,
-    #                 label="predicted")
-    #
+    if pred_pitch is not None and pred_times is not None:
+        if mutlipitch:
+            plot_multipitch(
+                    axes, pred_pitch, pred_times,
+                    linewidth=0.5,
+                    periodicity=periodicity,
+                    threshold=threshold,
+                    label="predicted")
+        else:
+            plot_pitch(
+                    axes[0], pred_pitch, pred_times,
+                    linewidth=0.5,
+                    periodicity=periodicity,
+                    threshold=threshold,
+                    label="predicted")
+
     if gt_pitch is not None and gt_times is not None:
         if mutlipitch:
             plot_multipitch(
@@ -287,21 +286,21 @@ def plot_with_matplotlib(
                     axes[0], gt_pitch, gt_times,
                     plot_red=True,
                     label="truth")
-    #
-    # # prepare the legend 
-    # handles, labels = axes[-1].get_legend_handles_labels()
-    #
-    # for ind, axis in enumerate(axes):
-    #     axis.set_title(f"String {ind}", x=0.06, y=0.7, color='r')
-    #
-    # if periodicity is not None:
-    #     if mutlipitch:
-    #         t_handles, t_labels = plot_multiperiodicity(axes, periodicity, pred_times, threshold)
-    #     else:
-    #         t_handles, t_labels = plot_periodicity(axes[0], periodicity, pred_times, threshold)
-    #
-    #     handles.extend(t_handles)
-    #     labels.extend(t_labels)
+
+    # prepare the legend 
+    handles, labels = axes[-1].get_legend_handles_labels()
+
+    for ind, axis in enumerate(axes):
+        axis.set_title(f"String {ind}", x=0.06, y=0.7, color='r')
+
+    if periodicity is not None:
+        if mutlipitch:
+            t_handles, t_labels = plot_multiperiodicity(axes, periodicity, pred_times, threshold)
+        else:
+            t_handles, t_labels = plot_periodicity(axes[0], periodicity, pred_times, threshold)
+
+        handles.extend(t_handles)
+        labels.extend(t_labels)
 
     figure.suptitle(f"Pitch thresholded with periodicity above {threshold}, {title}")
 

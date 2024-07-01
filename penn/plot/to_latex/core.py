@@ -38,12 +38,10 @@ def from_audio(
         # Infer
         logits.append(penn.infer(frames, checkpoint=checkpoint).detach())
 
-    breakpoint()
-
     # Concatenate results
     if penn.FCN:
         logits = torch.cat(logits, dim=-2)
-        logits = logits.permute(2, 1, 3, 0)
+        logits = logits.permute(3, 1, 2, 0)
     else:
         logits = torch.cat(logits)
     pitch = None
