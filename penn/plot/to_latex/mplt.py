@@ -176,7 +176,7 @@ def plot_multipitch(axes : List[plt.Axes],
                    periodicity=periodicity_slice,
                    threshold=threshold,
                    label=label, 
-                   ylim=[0, pitch.max() * 1.2],
+                   ylim=[penn.FMIN, pitch.max() * 1.2],
                    set_xlabel=False)
 
     axes[-1].set_xlabel("Time [s]")
