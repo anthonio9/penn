@@ -19,6 +19,13 @@ def plot_logits(axes : plt.Axes,
     """
     logits = logits.squeeze()
 
+    style = {
+        "norm" : plt.matplotlib.colors.LogNorm(vmin=logits.min(), 
+                                               vmax=logits.max())
+    }
+
+    # breakpoint()
+
     # divide logits into strings
     logits_chunks = np.split(logits, logits.shape[1], axis=1)
 
@@ -27,7 +34,9 @@ def plot_logits(axes : plt.Axes,
 
     for axis, logits_chunk in zip(axes, logits_chunks):
         logits_chunk = logits_chunk.squeeze(axis=1).T
-        axis.pcolormesh(times, freqs, logits_chunk)
+        axis.pcolormesh(times, freqs, logits_chunk,
+                        cmap="gray_r",
+                        **style)
         axis.set_ylim([0, 500])
         axis.set_xlim([times[0], times[-1]])
 
@@ -242,6 +251,7 @@ def plot_with_matplotlib(
         # Create plot
         figure, axes = plt.subplots(nrows=penn.PITCH_CATS,
                                     ncols=1)
+        axes = np.flip(axes)
     else:
         # Create plot
         figure, axis = plt.subplots(figsize=(7, 3))
@@ -304,7 +314,7 @@ def plot_with_matplotlib(
 
     figure.suptitle(f"Pitch thresholded with periodicity above {threshold}, {title}")
 
-    # figure.legend(handles, labels, loc='lower right')
+    figure.legend(handles, labels, loc='lower right')
     figure.set_tight_layout({'pad' : 0.5})
 
     # figure.show()

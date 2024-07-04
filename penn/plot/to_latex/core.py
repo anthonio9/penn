@@ -56,7 +56,13 @@ def from_audio(
         times = penn.HOPSIZE_SECONDS * np.arange(pitch[0].shape[-1])
         periodicity = periodicity.detach().numpy()
 
+    logits = torch.nan_to_num(
+            logits,
+            neginf=torch.min(logits[torch.logical_not(torch.isneginf(logits))]),
+            posinf=torch.max(logits[torch.logical_not(torch.isposinf(logits))])
+            )
     logits = torch.softmax(logits, dim=2)
+
     return pitch, times, periodicity, logits
 
 
