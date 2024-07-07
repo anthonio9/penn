@@ -98,7 +98,7 @@ class PolyPENNRFCN(PolyPENNFCN):
             Block(128, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             Block(256, 512, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             Block(512, penn.PITCH_BINS * penn.PITCH_CATS, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            # HierarchicalBlock(penn.PITCH_BINS, 6))
+            ReccurentBlock(),
             torch.nn.Conv1d(penn.PITCH_BINS * penn.PITCH_CATS, penn.PITCH_BINS * penn.PITCH_CATS, 1))
         super().__init__(layers)
 
@@ -183,13 +183,15 @@ class HierarchicalBlock(torch.nn.Module):
 
         logits = torch.cat(logits_list, dim=1)
 
+
 class ReccurentBlock(torch.nn.Module):
-    def __init__(
-        self,
-        pitch_bins,
-        no_strings):
-        self.pitch_bins = pitch_bins
-        self.no_strings = no_strings
+    def __init__(self):
+        pass
 
     def forward(self, embeddings):
-        pass
+
+        embeddings2 = torch.clone(embeddings) 
+        embeddings2[..., 1:] = embeddings2[..., 0:-1]
+        embeddings2[..., 0] = 0
+
+        return embeddings + embeddings2
