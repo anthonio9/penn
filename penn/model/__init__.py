@@ -2,7 +2,7 @@ from .core import *
 from .crepe import Crepe
 from .deepf0 import Deepf0
 from .fcnf0 import Fcnf0
-from .poly_pitch_net import PolyPitchNet1, PolyPENNFCN, PolyPENNHFCN
+from .poly_pitch_net import PolyPitchNet1, PolyPENNFCN, PolyPENNHFCN, PolyPENNRFCN
 
 import penn
 
@@ -21,6 +21,8 @@ def Model(name=penn.MODEL):
         return PolyPENNFCN()
     if name == 'polypennhfcn':
         return PolyPENNHFCN()
+    if name == 'polypennrfcn':
+        return PolyPENNRFCN()
 
 
     raise ValueError(f'Model {name} is not defined')

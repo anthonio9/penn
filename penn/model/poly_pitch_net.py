@@ -87,6 +87,22 @@ class PolyPENNHFCN(PolyPENNFCN):
         super().__init__(layers)
 
 
+class PolyPENNRFCN(PolyPENNFCN):
+    def __init(self):
+        layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
+        layers += (
+            Block(penn.HOPSIZE, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(256, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(32, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(32, 128, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(128, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(256, 512, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(512, penn.PITCH_BINS * penn.PITCH_CATS, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            # HierarchicalBlock(penn.PITCH_BINS, 6))
+            torch.nn.Conv1d(penn.PITCH_BINS * penn.PITCH_CATS, penn.PITCH_BINS * penn.PITCH_CATS, 1))
+        super().__init__(layers)
+
+
 class Block(torch.nn.Sequential):
 
     def __init__(
@@ -166,3 +182,14 @@ class HierarchicalBlock(torch.nn.Module):
             logits_list.append(logits_out)
 
         logits = torch.cat(logits_list, dim=1)
+
+class ReccurentBlock(torch.nn.Module):
+    def __init__(
+        self,
+        pitch_bins,
+        no_strings):
+        self.pitch_bins = pitch_bins
+        self.no_strings = no_strings
+
+    def forward(self, embeddings):
+        pass
