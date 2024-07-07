@@ -54,6 +54,7 @@ class PolyPENNFCN(PolyPitchNet):
         # shape [128, 6, 1440, *]
         logits = torch.stack(logits_chunks, dim=1)
 
+
         # [BS, PITCH_CATS, PITCH_BINS, T] => [BS, PITCH_CATS, T, PITCH_BINS]
         # logits = logits.permute(0, 1, 3, 2)
         return logits
@@ -68,6 +69,22 @@ class PolyPENNFCN(PolyPitchNet):
             Block(128, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             Block(256, 512, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             torch.nn.Conv1d(512, penn.PITCH_BINS * penn.PITCH_CATS, 1))
+        super().__init__(layers)
+
+
+class PolyPENNHFCN(PolyPENNFCN):
+    def __init(self):
+        layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
+        layers += (
+            Block(penn.HOPSIZE, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(256, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(32, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(32, 128, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(128, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            Block(256, 512, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            torch.nn.Conv1d(512, penn.PITCH_BINS, 1),
+            HierarchicalBlock(penn.PITCH_BINS, 6),
+            torch.nn.Conv1d(penn.PITCH_CATS * penn.PITCH_BINS, penn.PITCH_CATS * penn.PITCH_BINS, 1),)
         super().__init__(layers)
 
 
@@ -109,3 +126,36 @@ class Block(torch.nn.Sequential):
             layers += (torch.nn.Dropout(penn.DROPOUT),)
 
         super().__init__(*layers)
+
+
+class HierarchicalBlock(torch.nn.Module):
+    def __init__(
+        self,
+        pitch_bins,
+        no_strings):
+        self.pitch_bins = pitch_bins
+        self.no_strings = no_strings
+
+        string_blocks = []
+
+        for string in range(no_strings):
+            string_block = nn.Sequential({
+                Block((1 + string)*pitch_bins, (1+string)*2048, kernel_size=1),
+                Block((1 + string)*2048, pitch_bins, kernel_size=1),
+                })
+
+            string_blocks.append(string_block)
+
+    def forward(self, embeddings):
+        embeddings_list = [embeddings]
+
+        for string in range(no_strings):
+            stacked_embeddings = torch.cat(embeddings, dim=1)
+
+            logits = string_block[string](stacked_embeddings)
+            breakpoint()
+            embeddings_list.append(logits)
+
+        logits_list = embeddings_list[1:]
+
+        logits = torch.cat(logits_list, dim=1)
