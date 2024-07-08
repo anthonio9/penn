@@ -199,37 +199,40 @@ class HierarchicalBlock(torch.nn.Module):
         self,
         pitch_bins,
         no_strings):
+
+        super().__init__()
+
         self.pitch_bins = pitch_bins
         self.no_strings = no_strings
 
-        string_blocks = []
-        head_blocks = []
+        self.string_blocks = []
+        self.head_blocks = []
 
         for string in range(no_strings):
             string_block = torch.nn.Sequential(
-                Block((1 + string)*pitch_bins, (1+string)*2048,
+                Block((1 + string)*self.pitch_bins, (1+string)*2048,
                     kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-                Block((1 + string)*2048, pitch_bins,
+                Block((1 + string)*2048, self.pitch_bins,
                     kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
                 )
 
-            string_blocks.append(string_block)
+            self.string_blocks.append(string_block)
 
             head_block = torch.nn.Conv1d(penn.PITCH_BINS, penn.PITCH_BINS, 1)
-            head_blocks.append(head_block)
+            self.head_blocks.append(head_block)
 
     def forward(self, embeddings):
+        embeddings = embeddings.to(torch.float)
         embeddings_list = [embeddings]
         logits_list = []
 
-        for string in range(no_strings):
+        for string in range(self.no_strings):
             stacked_embeddings = torch.cat(embeddings_list, dim=1)
-            string_block[string]
 
-            embeddings_out = string_block[string](stacked_embeddings)
+            embeddings_out = self.string_blocks[string](stacked_embeddings)
             embeddings_list.append(logits)
 
-            logits_out = head_blocks[string](embeddings_out)
+            logits_out = self.head_blocks[string](embeddings_out)
             logits_list.append(logits_out)
 
         logits = torch.cat(logits_list, dim=1)

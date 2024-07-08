@@ -53,6 +53,6 @@ CHANN_OUT = [256, 32, 32, 128, 256, 512]
 
 KERNEL_SIZE = [15, 15, 15, 15, 15, 15]
 
-PADDING_SIZE = [7, 7, 7, 7, 7, 7]
+PADDING_SIZE = [7, 9, 7, 7, 7, 7]
 
-DILATION = [1, 2, 2, 4, 4, 8]
+DILATION = [1, 2, 1, 1, 1, 1]
