@@ -132,7 +132,8 @@ class PolyPENNHFCN(PolyPENNFCNBase):
             Block(128, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             Block(256, 512, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             Block(512, penn.PITCH_BINS, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            HierarchicalBlock(penn.PITCH_BINS, 6))
+            HierarchicalBlock(penn.PITCH_BINS, penn.PITCH_CATS))
+            #torch.nn.Conv1d(penn.PITCH_BINS * penn.PITCH_CATS, penn.PITCH_BINS * penn.PITCH_CATS, 1))
         super().__init__(layers)
 
 
@@ -205,37 +206,99 @@ class HierarchicalBlock(torch.nn.Module):
         self.pitch_bins = pitch_bins
         self.no_strings = no_strings
 
-        self.string_blocks = []
-        self.head_blocks = []
+        #string_blocks_list = []
+        #head_blocks_list = []
 
-        for string in range(no_strings):
-            string_block = torch.nn.Sequential(
-                Block((1 + string)*self.pitch_bins, (1+string)*2048,
-                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-                Block((1 + string)*2048, self.pitch_bins,
-                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-                )
+        #for string in range(no_strings):
+        #    string_block = torch.nn.Sequential(
+        #        #Block(self.pitch_bins, 2048,
+        #        #    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+        #        #Block(2048, self.pitch_bins,
+        #        #    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+        #        Block((1 + no_strings)*self.pitch_bins, self.pitch_bins,
+        #            kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+        #        #Block(self.pitch_bins, self.pitch_bins,
+        #        #    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+        #        #torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1),
+        #        )
 
-            self.string_blocks.append(string_block)
+        #    string_blocks_list.append(string_block)
 
-            head_block = torch.nn.Conv1d(penn.PITCH_BINS, penn.PITCH_BINS, 1)
-            self.head_blocks.append(head_block)
+        #    head_blocks_list.append(
+        #        torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1))
+
+        #self.string_blocks = torch.nn.ModuleList(string_blocks_list)
+        #self.head_blocks = torch.nn.ModuleList(head_blocks_list)
+
+        self.s1 = Block((1 + 0)*self.pitch_bins, self.pitch_bins,
+                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
+        self.s2 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
+                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
+        self.s3 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
+                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
+        self.s4 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
+                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
+        self.s5 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
+                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
+        self.s6 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
+                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
+
+        self.h1 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
+        self.h2 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
+        self.h3 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
+        self.h4 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
+        self.h5 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
+        self.h6 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
 
     def forward(self, embeddings):
-        embeddings = embeddings.to(torch.float)
         embeddings_list = [embeddings]
+
+        #for string in range(self.no_strings):
+        #    embeddings_list.append(torch.zeros(embeddings.shape).to(embeddings.device))
+
         logits_list = []
 
-        for string in range(self.no_strings):
-            stacked_embeddings = torch.cat(embeddings_list, dim=1)
+        #for string in range(self.no_strings):
+        #    stacked_embeddings = torch.cat(embeddings_list, dim=1)
 
-            embeddings_out = self.string_blocks[string](stacked_embeddings)
-            embeddings_list.append(logits)
+        #    embeddings_out = self.string_blocks[string](stacked_embeddings)
+        #    embeddings_list[string + 1] = embeddings_out
 
-            logits_out = self.head_blocks[string](embeddings_out)
-            logits_list.append(logits_out)
+        #    logits_out = self.head_blocks[string](embeddings_out)
+        #    logits_list.append(logits_out)
+
+        stacked_embeddings = torch.cat(embeddings_list, dim=1)
+        embeddings_out = self.s1(stacked_embeddings)
+        embeddings_list.append(embeddings_out)
+        logits_list.append(self.h1(embeddings_out))
+
+        stacked_embeddings = torch.cat(embeddings_list, dim=1)
+        embeddings_out = self.s2(stacked_embeddings)
+        embeddings_list[1] = embeddings_out
+        logits_list.append(self.h2(embeddings_out))
+
+        stacked_embeddings = torch.cat(embeddings_list, dim=1)
+        embeddings_out = self.s3(stacked_embeddings)
+        embeddings_list[1] = embeddings_out
+        logits_list.append(self.h3(embeddings_out))
+
+        stacked_embeddings = torch.cat(embeddings_list, dim=1)
+        embeddings_out = self.s4(stacked_embeddings)
+        embeddings_list[1] = embeddings_out
+        logits_list.append(self.h4(embeddings_out))
+
+        stacked_embeddings = torch.cat(embeddings_list, dim=1)
+        embeddings_out = self.s5(stacked_embeddings)
+        embeddings_list[1] = embeddings_out
+        logits_list.append(self.h5(embeddings_out))
+
+        stacked_embeddings = torch.cat(embeddings_list, dim=1)
+        embeddings_out = self.s6(stacked_embeddings)
+        embeddings_list[1] = embeddings_out
+        logits_list.append(self.h6(embeddings_out))
 
         logits = torch.cat(logits_list, dim=1)
+        return logits
 
 
 class ReccurentBlock(torch.nn.Module):
