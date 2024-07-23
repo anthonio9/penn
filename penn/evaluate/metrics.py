@@ -41,8 +41,8 @@ class Metrics:
             metrics_dict |= self.f1() 
             metrics_dict |= self.pitch_metrics()
 
-            #if penn.PITCH_CATS > 1:
-            #    metrics_dict |= self.multi_pitch_metrics() 
+            if penn.PITCH_CATS > 1:
+               metrics_dict |= self.multi_pitch_metrics() 
 
             return metrics_dict
 
@@ -68,15 +68,15 @@ class Metrics:
                 # Update periodicity metrics
                 self.f1.update(periodicity, voiced)
 
-                #if penn.PITCH_CATS > 1:
-                #    self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
+                if penn.PITCH_CATS > 1:
+                   self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
 
     def reset(self):
         self.accuracy.reset()
         self.f1.reset()
         self.loss.reset()
         self.pitch_metrics.reset()
-        # self.multi_pitch_metrics.reset()
+        self.multi_pitch_metrics.reset()
 
 
 class PitchMetrics:

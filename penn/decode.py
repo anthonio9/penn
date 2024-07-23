@@ -162,7 +162,6 @@ def local_expected_value_from_bins(
         window_indxs = torch.arange(window, device=bins.device)[None][None]
 
     # Get indices
-    breakpoint()
     indices = \
         bins.repeat(repeat_window) + torch.arange(window, device=bins.device)[None]
 
