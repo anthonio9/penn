@@ -147,11 +147,8 @@ def local_expected_value_from_bins(
     Returns
         freq - pitch vector in Hz
     """
-    # Pad
-    padded = torch.nn.functional.pad(
-        logits.squeeze(-1),
-        (window // 2, window // 2),
-        value=-float('inf'))
+    no_batch = bins.shape[0]
+    no_frames = bins.shape[-1]
 
     # regular case of logits.shape == [128, 1440, 1] and bins [128, 1]
     repeat_window = [1, window]
@@ -159,7 +156,19 @@ def local_expected_value_from_bins(
     # make the algorithm work with logits.shape == [128, 6, 1440, 1] => the poly pitch net
     if len(bins.shape) == 3:
         repeat_window = [1, 1, window]
-        window_indxs = torch.arange(window, device=bins.device)[None][None]
+
+        if bins.shape[-1] > 1:
+            chunked_bins = bins.chunk(no_frames, dim=-1)
+            chunked_logits = logits.chunk(no_frames, dim=-1)
+
+            bins = torch.vstack(chunked_bins)
+            logits = torch.vstack(chunked_logits)
+
+    # Pad
+    padded = torch.nn.functional.pad(
+        logits.squeeze(-1),
+        (window // 2, window // 2),
+        value=-float('inf'))
 
     # Get indices
     indices = \
@@ -169,4 +178,10 @@ def local_expected_value_from_bins(
     cents = penn.convert.bins_to_cents(torch.clip(indices - window // 2, 0))
 
     # Decode using local expected value
-    return expected_value(torch.gather(padded, -1, indices), cents)
+    expected = expected_value(torch.gather(padded, -1, indices), cents)
+
+    chunked_expected = expected.chunk(no_batch, dim=0)
+    chunked_expected = [chunk.permute(2, 1, 0) for chunk in chunked_expected]
+    expected = torch.vstack(chunked_expected)
+
+    return expected
