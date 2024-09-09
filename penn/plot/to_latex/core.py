@@ -166,7 +166,8 @@ def from_file_to_file(audio_file,
                       duration : float=None,
                       multipitch=False,
                       threshold=0.5,
-                      plot_logits=False):
+                      plot_logits=False,
+                      no_pred=True):
     # Load audio
     audio = penn.load.audio(audio_file)
 
@@ -210,6 +211,11 @@ def from_file_to_file(audio_file,
     # now that we have both ground truth, STFT and the preditcted pitch, plot all with matplotlib and plotly
     # well, do we have predicted pitch?
     # plot_over_gt_with_plotly(audio, sr, pred_freq, pred_times, gt)
+
+    if no_pred:
+        pred_freq   = None
+        pred_times  = None
+        periodicity = None
     
     penn.plot.to_latex.mplt.plot_with_matplotlib(
             title=file_stem,

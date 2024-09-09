@@ -66,7 +66,7 @@ def plot_stft(axes : plt.Axes,
     times += time_offset
 
     for axis in axes:
-        axis.pcolormesh(times, freqs, np.abs(stft), cmap='grey')
+        axis.pcolormesh(times, freqs, np.abs(stft), cmap='gray_r')
         axis.set_ylim([50, 300])
         axis.set_xlim([times[0], times[-1]])
 

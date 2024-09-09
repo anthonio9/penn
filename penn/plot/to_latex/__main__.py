@@ -58,6 +58,11 @@ def parse_args():
         '--plot_logits',
         action='store_true',
         help='Set to plot model output logits instead of STFT')
+    parser.add_argument(
+        '-np',
+        '--no_pred',
+        action='store_true',
+        help='Set to omit the plots of the predicted values')
     return parser.parse_known_args()[0]
 
 
