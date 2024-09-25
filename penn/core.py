@@ -773,7 +773,12 @@ class InferenceSampler(torch.utils.data.Sampler):
 
 def cents(a, b):
     """Compute pitch difference in cents"""
-    return penn.OCTAVE * torch.log2(a / b)
+    if type(a) is torch.Tensor:
+        return penn.OCTAVE * torch.log2(a / b)
+    elif type(a) is np.ndarray or type(b) is np.ndarray:
+        return penn.OCTAVE * np.log2(a / b)
+    else:
+        raise TypeError(f"Type {type(a)} not supported")
 
 
 def expected_frames(samples, sample_rate, hopsize, center):

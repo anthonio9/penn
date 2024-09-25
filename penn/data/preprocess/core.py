@@ -563,9 +563,7 @@ def extract_pitch_array_jams(jam: jams.JAMS, track, uniform=True) -> Tuple[np.nd
     """
     if penn.REMOVE_OVERHANGS:
         notes_dict = jams_to_notes(jam)
-
-        if penn.REMOVE_OVERHANGS:
-            notes_dict = remove_overhangs(notes_dict)
+        notes_dict = remove_overhangs(notes_dict)
 
         pitch_array, time_steps_array = notes_dict_to_pitch_array(
                 notes_dict,
@@ -749,65 +747,6 @@ def notes_dict_to_pitch_array(notes_dict: dict, duration: int):
     return pitch_array, times_steps_array
 
 
-def notes_dict_to_pitch_array60(
-        notes_dict: dict,
-        duration: int,
-        offset_limit=penn.MIDI_OFFSET_LIMIT):
-    # check if any notes are lower than the floor approximation of the midi note
-    pitch_dict = notes_dict_to_pitch_dict(notes_dict)
-
-    midi_list = []
-    offset_list = []
-    times_list = []
-
-    for slc, slice_dict in pitch_dict.items():
-        pitch_slice = slice_dict[JAMS_FREQ]
-        midi_slice = np.round(slice_dict[JAMS_MIDI])
-        times_slice = slice_dict[JAMS_TIMES]
-        
-        # calculate the offset in cents
-        midi_cents = penn.convert.midi_to_cents(midi_slice)
-        pitch_cents = penn.convert.frequency_to_cents(pitch_slice)
-        offset = midi_cents - pitch_cents
-        offset[offset >= penn.MIDI_OFFSET_LIMIT] = penn.MIDI_OFFSET_LIMIT - 1
-        offset[offset < -penn.MIDI_OFFSET_LIMIT] = -penn.MIDI_OFFSET_LIMIT
-
-        # # this assumes that the deviation is in range [-100, +100] cents
-        # resolution = penn.MIDI_OFFSET_LIMIT*2 / 60
-        # offset += penn.MIDI_OFFSET_LIMIT
-        # offset = np.round(offset / resolution)
-
-        entry_times, midi_array = time_series_to_uniform_from_array(
-                times=times_slice, 
-                values=midi_slice, 
-                hop_length=penn.data.preprocess.GSET_HOPSIZE_SECONDS,
-                duration=duration)
-
-        entry_times, offset_array = time_series_to_uniform_from_array(
-                times=times_slice, 
-                values=offset, 
-                hop_length=penn.data.preprocess.GSET_HOPSIZE_SECONDS,
-                duration=duration)
-
-        times_list.append(entry_times)
-        midi_list.append(midi_array.T)
-        offset_list.append(offset_array.T)
-
-    # assert all entry times arrays are of the same lenght
-    time_lenghts = [len(times) for times in times_list]
-    assert time_lenghts[0] == sum(time_lenghts) / len(time_lenghts)
-
-    times_steps_array = times_list[0]
-    midi_array = np.vstack(midi_list)
-
-    below36 = midi_array[midi_array < 36]
-    assert (below36 == 0).all()
-
-    offset_array = np.vstack(offset_list)
-
-    return midi_array, offset_array, times_steps_array
-
-
 def remove_overhangs(notes_dict: dict,
                      divider:int=penn.REMOVE_OVERHANGS_DIVIDER,
                      threshold:int=penn.REMOVE_OVERHANGS_THRESHOLD):
@@ -828,10 +767,16 @@ def remove_overhangs(notes_dict: dict,
 
             no_pitches = len(note)
             last10 = no_pitches - (no_pitches // divider)
-            note_bins = penn.convert.frequency_to_bins(note, quantize_fn=np.floor)
-            average90 = np.mean(note_bins[:last10])
+            average90 = np.mean(note[:last10])
 
-            notes_under_threshold = np.abs(note_bins[last10:] - average90) <= threshold
+            notes_under_threshold = np.abs(penn.cents(note[last10:], average90)) <= threshold
+
+            # try: 
+            #     if len(note[last10:]) > 0 and (penn.cents(average90, note[last10:]) > 50).any():
+            #         breakpoint()
+            # except TypeError as e:
+            #     print(f"Type error: {e}")
+
             note_cut = note[last10:]
             note_cut = note_cut[notes_under_threshold]
 
