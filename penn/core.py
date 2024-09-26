@@ -481,7 +481,11 @@ def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
             raise ValueError(
                 f'Periodicity method {penn.PERIODICITY} is not defined')
 
-        return bins.T, pitch.T, periodicity.T
+        binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
+        pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
+        periodicityT = periodicity.permute(*torch.arange(periodicity.ndim - 1, -1, -1))
+
+        return binsT, pitchT, periodicityT
 
 
 def postprocess_with_periodicity(logits, pthreshold, fmin=penn.FMIN, fmax=penn.FMAX):
@@ -773,7 +777,7 @@ class InferenceSampler(torch.utils.data.Sampler):
 
 def cents(a, b):
     """Compute pitch difference in cents"""
-    if type(a) is torch.Tensor:
+    if type(a) is torch.Tensor or type(a) is torch.masked.maskedtensor.core.MaskedTensor:
         return penn.OCTAVE * torch.log2(a / b)
     elif type(a) is np.ndarray or type(b) is np.ndarray:
         return penn.OCTAVE * np.log2(a / b)

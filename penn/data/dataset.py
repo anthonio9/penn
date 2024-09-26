@@ -144,7 +144,7 @@ class Dataset(torch.utils.data.Dataset):
         bins = penn.convert.frequency_to_bins(pitch)
 
         # Set unvoiced bins to random values
-        print(f"bins pre  randomizing: {bins[~voiced[:penn.PITCH_CATS, :]]}")
+        # print(f"bins pre  randomizing: {bins[~voiced[:penn.PITCH_CATS, :]]}")
         bins[:penn.PITCH_CATS, :] = torch.where(
             ~voiced[:penn.PITCH_CATS, :],
             torch.randint(
@@ -153,7 +153,7 @@ class Dataset(torch.utils.data.Dataset):
                 bins[:penn.PITCH_CATS, :].shape,
                 dtype=torch.long),
             bins[:penn.PITCH_CATS, :])
-        print(f"bins post randomizing: {bins[~voiced[:penn.PITCH_CATS, :]]}")
+        #print(f"bins post randomizing: {bins[~voiced[:penn.PITCH_CATS, :]]}")
 
         return audio[None], bins, pitch, voiced, stem
 

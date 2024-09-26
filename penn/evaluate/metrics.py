@@ -51,7 +51,8 @@ class Metrics:
         logits = logits.detach()
 
         # Update loss
-        self.loss.update(logits[:, :penn.PITCH_BINS], bins.T)
+        binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
+        self.loss.update(logits[:, :penn.PITCH_BINS], binsT)
 
         with torchutil.time.context('decode'):
             predicted, pitch, periodicity = penn.postprocess(logits)
@@ -156,7 +157,6 @@ class MutliPitchMetrics:
             pitch_with_periodicity = pitch.clone().detach()
             pitch_with_periodicity[periodicity < threshold] = 0
             target[torch.logical_not(target_voiced)] = 0
-            breakpoint()
 
             BS = pitch_with_periodicity.shape[0]
 
