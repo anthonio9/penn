@@ -208,3 +208,5 @@ CHANN_IN = None
 CHANN_OUT = None
 
 DILATION = None
+
+SILENCE_HEAD = False

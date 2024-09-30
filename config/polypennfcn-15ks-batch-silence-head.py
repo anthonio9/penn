@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennhfcn'
+CONFIG = 'polypennfcn-15ks-batch'
 
 # gset only
 DATASETS = ['gset']
@@ -28,7 +28,7 @@ VOICED_ONLY = True
 STRING_INDEX = None
 
 # poly pitch net model
-MODEL = 'polypennhfcn'
+MODEL = 'polypennfcn'
 
 PITCH_CATS = 6
 
@@ -50,3 +50,5 @@ EVALUATION_BATCH_SIZE = None
 KERNEL_SIZE = 15 
 
 PADDING_SIZE = 7
+
+SILENCE_HEAD = True
