@@ -131,6 +131,9 @@ def train(datasets, directory, gpu=None, use_wand=False):
                 # Forward pass
                 logits = model(audio.to(device))
 
+                if isinstance(logits, dict):
+                    logits = logits[penn.model.KEY_LOGITS]
+
                 # Compute losses
                 losses = loss(logits, bins.to(device))
 
@@ -274,6 +277,9 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
 
             # Forward pass
             logits = model(audio.to(device))
+
+            if isinstance(logits, dict):
+                logits = logits[penn.model.KEY_LOGITS]
 
             binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
             pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))

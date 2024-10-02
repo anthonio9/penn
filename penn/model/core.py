@@ -13,3 +13,6 @@ class Normalize(torch.nn.Module):
 
     def forward(self, frames):
         return penn.normalize(frames)
+
+KEY_LOGITS = 'LOGITS'
+KEY_SILENCE = 'SILENCE'

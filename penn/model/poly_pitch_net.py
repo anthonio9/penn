@@ -6,7 +6,7 @@ class PolyPitchNet(torch.nn.Sequential):
     def __init__(self, layers):
         super().__init__(*layers)
 
-    def forward(self, frames):
+    def forward(self, frames : torch.Tensor):
         # shape=(batch, 1, penn.WINDOW_SIZE) =>
         # shape=(batch, penn.PITCH_BINS, penn.NUM_TRAINING_FRAMES)
         logits = super().forward(frames[:, :, 16:-15])
@@ -98,59 +98,58 @@ class PolyPENNFCN(PolyPitchNet):
         super().__init__(layers)
 
 
-class PolyPENNDFCN(PolyPENNFCNBase):
+class PolyPENNFCN2(torch.nn.Module):
+    def forward(self, frames : torch.Tensor):
+        frames = frames.squeeze(dim=1)
+
+        frames_list = torch.chunk(frames, chunks=frames.shape[-1] // penn.HOPSIZE, dim=-1)
+        # frames shape [BATCH_SIZE, FRAMES, FRAME_LENGTH]
+        # FRAMES dimention is made out of initial frames and the actual frames which are present in the ground truth. Meaning that the first few frames made out of penn.WINDOW_SIZE do not translate into ground truth at all and should be randomize on the ground truth side.
+        frames = torch.stack(frames_list, dim=1)
+        # [BS, T, HOPSIZE] => [BS, HOPSIZE, T]
+        frames = torch.permute(frames, (0, 2, 1))
+
+        # breakpoint()
+        main_logits = self.main_sequence(frames)
+        logits = self.pitch_head(main_logits)
+        silence_logits = self.silence_head(main_logits)
+
+        # [128, 8640, *] => [128, 1440, *] * 6
+        logits_chunks = logits.chunk(penn.PITCH_CATS, dim=-2)
+
+        # shape [128, 6, 1440, *]
+        logits = torch.stack(logits_chunks, dim=1)
+
+        # [BS, PITCH_CATS, PITCH_BINS, T] => [BS, PITCH_CATS, T, PITCH_BINS]
+        # logits = logits.permute(0, 1, 3, 2)
+        logits_dict = {
+                penn.model.KEY_LOGITS   : logits,
+                penn.model.KEY_SILENCE  : silence_logits,
+                       }
+        return logits_dict
+
     def __init__(self):
+        super().__init__()
+        # self.silence_head = Block(512, 1024, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
         layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
 
-        if type(penn.KERNEL_SIZE) is not list:
-            raise ValueError("penn.KERNEL_SIZE should be a list of integers")
-
-        for chann_in, chann_out, ks, pds, dil in zip(
-                penn.CHANN_IN, penn.CHANN_OUT, penn.KERNEL_SIZE, penn.PADDING_SIZE, penn.DILATION):
-            layers += (
-                Block(
-                    in_channels=chann_in,
-                    out_channels=chann_out,
-                    kernel_size=ks,
-                    padding=pds,
-                    dilation=dil), )
-
-        layers += (
-            torch.nn.Conv1d(penn.CHANN_OUT[-1], penn.PITCH_BINS * penn.PITCH_CATS, 1), )
-        super().__init__(layers)
-
-
-
-class PolyPENNHFCN(PolyPENNFCNBase):
-    def __init__(self):
-        layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
-        layers += (
-            Block(penn.HOPSIZE, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            Block(256, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            Block(32, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            Block(32, 128, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            Block(128, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            Block(256, 512, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            Block(512, penn.PITCH_BINS, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            HierarchicalBlock(penn.PITCH_BINS, penn.PITCH_CATS))
-            #torch.nn.Conv1d(penn.PITCH_BINS * penn.PITCH_CATS, penn.PITCH_BINS * penn.PITCH_CATS, 1))
-        super().__init__(layers)
-
-
-class PolyPENNRFCN(PolyPENNFCNBase):
-    def __init__(self):
-        layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
         layers += (
             Block(penn.HOPSIZE, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             Block(256, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             Block(32, 32, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             Block(32, 128, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
             Block(128, 256, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            Block(256, 512, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            Block(512, penn.PITCH_BINS * penn.PITCH_CATS, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-            ReccurentBlock(),
-            torch.nn.Conv1d(penn.PITCH_BINS * penn.PITCH_CATS, penn.PITCH_BINS * penn.PITCH_CATS, 1))
-        super().__init__(layers)
+            Block(256, 512, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE))
+            # torch.nn.Conv1d(512, penn.PITCH_BINS * penn.PITCH_CATS, 1))
+
+        self.main_sequence = torch.nn.Sequential(*layers)
+        self.pitch_head = torch.nn.Conv1d(512, penn.PITCH_BINS * penn.PITCH_CATS, 1)
+
+        # prepare the SILENCE HEAD
+        silence_layers = (
+            Block(512, 1024, kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
+            torch.nn.Conv1d(1024, penn.PITCH_CATS, 1))
+        self.silence_head = torch.nn.Sequential(*silence_layers)
 
 
 class Block(torch.nn.Sequential):
@@ -193,122 +192,3 @@ class Block(torch.nn.Sequential):
             layers += (torch.nn.Dropout(penn.DROPOUT),)
 
         super().__init__(*layers)
-
-
-class HierarchicalBlock(torch.nn.Module):
-    def __init__(
-        self,
-        pitch_bins,
-        no_strings):
-
-        super().__init__()
-
-        self.pitch_bins = pitch_bins
-        self.no_strings = no_strings
-
-        #string_blocks_list = []
-        #head_blocks_list = []
-
-        #for string in range(no_strings):
-        #    string_block = torch.nn.Sequential(
-        #        #Block(self.pitch_bins, 2048,
-        #        #    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-        #        #Block(2048, self.pitch_bins,
-        #        #    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-        #        Block((1 + no_strings)*self.pitch_bins, self.pitch_bins,
-        #            kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-        #        #Block(self.pitch_bins, self.pitch_bins,
-        #        #    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE),
-        #        #torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1),
-        #        )
-
-        #    string_blocks_list.append(string_block)
-
-        #    head_blocks_list.append(
-        #        torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1))
-
-        #self.string_blocks = torch.nn.ModuleList(string_blocks_list)
-        #self.head_blocks = torch.nn.ModuleList(head_blocks_list)
-
-        self.s1 = Block((1 + 0)*self.pitch_bins, self.pitch_bins,
-                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
-        self.s2 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
-                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
-        self.s3 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
-                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
-        self.s4 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
-                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
-        self.s5 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
-                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
-        self.s6 = Block((1 + 1)*self.pitch_bins, self.pitch_bins,
-                    kernel_size=penn.KERNEL_SIZE, padding=penn.PADDING_SIZE)
-
-        self.h1 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
-        self.h2 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
-        self.h3 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
-        self.h4 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
-        self.h5 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
-        self.h6 = torch.nn.Conv1d(self.pitch_bins, self.pitch_bins, 1)
-
-    def forward(self, embeddings):
-        embeddings_list = [embeddings]
-
-        #for string in range(self.no_strings):
-        #    embeddings_list.append(torch.zeros(embeddings.shape).to(embeddings.device))
-
-        logits_list = []
-
-        #for string in range(self.no_strings):
-        #    stacked_embeddings = torch.cat(embeddings_list, dim=1)
-
-        #    embeddings_out = self.string_blocks[string](stacked_embeddings)
-        #    embeddings_list[string + 1] = embeddings_out
-
-        #    logits_out = self.head_blocks[string](embeddings_out)
-        #    logits_list.append(logits_out)
-
-        stacked_embeddings = torch.cat(embeddings_list, dim=1)
-        embeddings_out = self.s1(stacked_embeddings)
-        embeddings_list.append(embeddings_out)
-        logits_list.append(self.h1(embeddings_out))
-
-        stacked_embeddings = torch.cat(embeddings_list, dim=1)
-        embeddings_out = self.s2(stacked_embeddings)
-        embeddings_list[1] = embeddings_out
-        logits_list.append(self.h2(embeddings_out))
-
-        stacked_embeddings = torch.cat(embeddings_list, dim=1)
-        embeddings_out = self.s3(stacked_embeddings)
-        embeddings_list[1] = embeddings_out
-        logits_list.append(self.h3(embeddings_out))
-
-        stacked_embeddings = torch.cat(embeddings_list, dim=1)
-        embeddings_out = self.s4(stacked_embeddings)
-        embeddings_list[1] = embeddings_out
-        logits_list.append(self.h4(embeddings_out))
-
-        stacked_embeddings = torch.cat(embeddings_list, dim=1)
-        embeddings_out = self.s5(stacked_embeddings)
-        embeddings_list[1] = embeddings_out
-        logits_list.append(self.h5(embeddings_out))
-
-        stacked_embeddings = torch.cat(embeddings_list, dim=1)
-        embeddings_out = self.s6(stacked_embeddings)
-        embeddings_list[1] = embeddings_out
-        logits_list.append(self.h6(embeddings_out))
-
-        logits = torch.cat(logits_list, dim=1)
-        return logits
-
-
-class ReccurentBlock(torch.nn.Module):
-    def __init__(self):
-        pass
-
-    def forward(self, embeddings):
-
-        embeddings2 = torch.clone(embeddings) 
-        embeddings2[..., 1:] = embeddings2[..., 0:-1]
-        embeddings2[..., 0] = 0
-
-        return embeddings + embeddings2

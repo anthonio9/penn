@@ -28,7 +28,7 @@ VOICED_ONLY = True
 STRING_INDEX = None
 
 # poly pitch net model
-MODEL = 'polypennfcn'
+MODEL = 'polypennfcn2'
 
 PITCH_CATS = 6
 
