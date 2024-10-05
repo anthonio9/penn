@@ -124,7 +124,8 @@ def train(datasets, directory, gpu=None, use_wand=False):
         for batch in train_loader:
 
             # Unpack batch
-            audio, bins, *_ = batch
+            # audio, bins, *_ = batch
+            audio, bins, _, voiced, *_ = batch
 
             with torch.autocast(device.type):
 
@@ -132,12 +133,19 @@ def train(datasets, directory, gpu=None, use_wand=False):
                 logits = model(audio.to(device))
 
                 if isinstance(logits, dict):
-                    logits = logits[penn.model.KEY_LOGITS]
+                    # Compute losses
+                    losses = loss(logits[penn.model.KEY_LOGITS], bins.to(device))
+                    train_loss_list.append(losses.item())
 
-                # Compute losses
-                losses = loss(logits, bins.to(device))
+                    if penn.model.KEY_SILENCE in logits:
+                        losses_silence = loss_silence(logits[penn.model.KEY_SILENCE], voiced)
+                        losses += losses_silence
+                else:
+                    # Compute losses
+                    losses = loss(logits, bins.to(device))
 
-                train_loss_list.append(losses.item())
+                    train_loss_list.append(losses.item())
+
 
             ##################
             # Optimize model #
@@ -313,6 +321,15 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
 ###############################################################################
 # Loss function
 ###############################################################################
+
+
+def loss_silence(silence_pred, silence_truth : torch.Tensor):
+    """Compute loss for the predicted silence"""
+
+    return torch.nn.functional.binary_cross_entropy_with_logits(
+        silence_pred,
+        silence_truth.float())
+
 
 
 def loss(logits, bins):

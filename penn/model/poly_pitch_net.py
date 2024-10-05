@@ -17,7 +17,8 @@ class PolyPitchNet(torch.nn.Sequential):
         # shape [128, 6, 1440, 1]
         logits = torch.stack(logits_chunks, dim=1)
 
-        return logits
+        logits_dict = { penn.model.KEY_LOGITS   : logits }
+        return logits_dict
 
 
 class PolyPENNFCNBase(PolyPitchNet):
@@ -41,8 +42,8 @@ class PolyPENNFCNBase(PolyPitchNet):
 
 
         # [BS, PITCH_CATS, PITCH_BINS, T] => [BS, PITCH_CATS, T, PITCH_BINS]
-        # logits = logits.permute(0, 1, 3, 2)
-        return logits
+        logits_dict = { penn.model.KEY_LOGITS   : logits }
+        return logits_dict
 
 
 class PolyPitchNet1(PolyPitchNet):
@@ -82,7 +83,8 @@ class PolyPENNFCN(PolyPitchNet):
 
         # [BS, PITCH_CATS, PITCH_BINS, T] => [BS, PITCH_CATS, T, PITCH_BINS]
         # logits = logits.permute(0, 1, 3, 2)
-        return logits
+        logits_dict = { penn.model.KEY_LOGITS   : logits }
+        return logits_dict
 
     def __init__(self):
         layers = (penn.model.Normalize(),) if penn.NORMALIZE_INPUT else ()
