@@ -41,6 +41,7 @@ class Metrics:
                     }
             metrics_dict |= self.f1() 
             metrics_dict |= self.pitch_metrics()
+            metrics_dict |= self.f1_silence() 
 
             if penn.PITCH_CATS > 1:
                metrics_dict |= self.multi_pitch_metrics() 
@@ -83,6 +84,7 @@ class Metrics:
         self.loss.reset()
         self.pitch_metrics.reset()
         self.multi_pitch_metrics.reset()
+        self.f1_silence.reset()
 
 
 class PitchMetrics:

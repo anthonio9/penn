@@ -325,7 +325,7 @@ def loss_silence(silence_pred, silence_truth : torch.Tensor):
 
     return torch.nn.functional.binary_cross_entropy_with_logits(
         silence_pred,
-        silence_truth.float())
+        silence_truth.float().to(silence_pred.device))
 
 
 
