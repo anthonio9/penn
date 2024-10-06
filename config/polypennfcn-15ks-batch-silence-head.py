@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-15ks-batch'
+CONFIG = 'polypennfcn-15ks-batch-silence-head'
 
 # gset only
 DATASETS = ['gset']
