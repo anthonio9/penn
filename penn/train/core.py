@@ -287,6 +287,7 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
             binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
             pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
             voicedT = voiced.permute(*torch.arange(voiced.ndim - 1, -1, -1))
+            logits_silenceT = logits_silence.permute(*torch.arange(logits_silence.ndim -1, -1, -1))
 
             # Update metrics
             metrics.update(
@@ -294,7 +295,7 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
                 binsT.to(device),
                 pitchT.to(device),
                 voicedT.to(device),
-                logits_silence=logits_silence)
+                logits_silence=logits_silenceT)
 
             # Stop when we exceed some number of batches
             if i + 1 == penn.LOG_STEPS:
