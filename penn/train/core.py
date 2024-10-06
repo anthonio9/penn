@@ -132,20 +132,13 @@ def train(datasets, directory, gpu=None, use_wand=False):
                 # Forward pass
                 logits = model(audio.to(device))
 
-                if isinstance(logits, dict):
-                    # Compute losses
-                    losses = loss(logits[penn.model.KEY_LOGITS], bins.to(device))
-                    train_loss_list.append(losses.item())
+                # Compute losses
+                losses = loss(logits[penn.model.KEY_LOGITS], bins.to(device))
+                train_loss_list.append(losses.item())
 
-                    if penn.model.KEY_SILENCE in logits:
-                        losses_silence = loss_silence(logits[penn.model.KEY_SILENCE], voiced)
-                        losses += losses_silence
-                else:
-                    # Compute losses
-                    losses = loss(logits, bins.to(device))
-
-                    train_loss_list.append(losses.item())
-
+                if penn.model.KEY_SILENCE in logits:
+                    losses_silence = loss_silence(logits[penn.model.KEY_SILENCE], voiced)
+                    losses += losses_silence
 
             ##################
             # Optimize model #
@@ -284,10 +277,12 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
         for i, (audio, bins, pitch, voiced, *_) in enumerate(loader):
 
             # Forward pass
-            logits = model(audio.to(device))
+            logits_dict = model(audio.to(device))
+            logits = logits_dict[penn.model.KEY_LOGITS]
+            logits_silence = None
 
-            if isinstance(logits, dict):
-                logits = logits[penn.model.KEY_LOGITS]
+            if penn.model.KEY_LOGITS in logits_dict:
+                logits_silence = logits_dict[penn.model.KEY_SILENCE]
 
             binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
             pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
@@ -298,7 +293,8 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
                 logits.to(device),
                 binsT.to(device),
                 pitchT.to(device),
-                voicedT.to(device))
+                voicedT.to(device),
+                logits_silence=logits_silence)
 
             # Stop when we exceed some number of batches
             if i + 1 == penn.LOG_STEPS:

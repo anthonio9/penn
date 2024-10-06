@@ -26,6 +26,7 @@ class Metrics:
         self.loss = Loss()
         self.pitch_metrics = PitchMetrics()
         self.multi_pitch_metrics = MutliPitchMetrics()
+        self.f1_silence = F1(prefix='silence-')
 
     def __call__(self):
         if penn.LOSS_MULTI_HOT:
@@ -46,7 +47,7 @@ class Metrics:
 
             return metrics_dict
 
-    def update(self, logits, bins, target, voiced):
+    def update(self, logits, bins, target, voiced, logits_silence=None):
         # Detach from graph
         logits = logits.detach()
 
@@ -68,6 +69,10 @@ class Metrics:
 
                 # Update periodicity metrics
                 self.f1.update(periodicity, voiced)
+
+                if logits_silence is not None:
+                    logits_silence = logits_silence.detach()
+                    self.f1_silence.update(logits_silence, voiced)
 
                 if penn.PITCH_CATS > 1:
                    self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
@@ -351,7 +356,7 @@ class FRCA(torchutil.metrics.Average):
 
 class F1:
 
-    def __init__(self, thresholds=None):
+    def __init__(self, thresholds=None, prefix=''):
         if thresholds is None:
             thresholds = sorted(list(set(
                 [2 ** -i for i in range(1, 11)] +
@@ -361,6 +366,7 @@ class F1:
             torchutil.metrics.Precision() for _ in range(len(thresholds))]
         self.recall = [
             torchutil.metrics.Recall() for _ in range(len(thresholds))]
+        self.prefix = prefix
 
     def __call__(self):
         result = {}
@@ -376,9 +382,9 @@ class F1:
             except ZeroDivisionError:
                 f1 = 0.
             result |= {
-                f'f1-{threshold:.6f}': f1,
-                f'precision-{threshold:.6f}': precision,
-                f'recall-{threshold:.6f}': recall}
+                f'{self.prefix}f1-{threshold:.6f}': f1,
+                f'{self.prefix}precision-{threshold:.6f}': precision,
+                f'{self.prefix}recall-{threshold:.6f}': recall}
         return result
 
     def update(self, periodicity, voiced):

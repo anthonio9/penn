@@ -20,7 +20,10 @@ class Fcnf0(torch.nn.Sequential):
     def forward(self, frames):
         # shape=(batch, 1, penn.WINDOW_SIZE) =>
         # shape=(batch, penn.PITCH_BINS, penn.NUM_TRAINING_FRAMES)
-        return super().forward(frames[:, :, 16:-15])
+        logits = super().forward(frames[:, :, 16:-15])
+
+        logits_dict = { penn.model.KEY_LOGITS   : logits }
+        return logits_dict
 
 
 class Block(torch.nn.Sequential):
