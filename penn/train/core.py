@@ -295,7 +295,7 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
                 binsT.to(device),
                 pitchT.to(device),
                 voicedT.to(device),
-                logits_silence=logits_silenceT)
+                logits_silence=logits_silenceT.to(device))
 
             # Stop when we exceed some number of batches
             if i + 1 == penn.LOG_STEPS:
