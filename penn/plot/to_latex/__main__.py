@@ -63,6 +63,11 @@ def parse_args():
         '--no_pred',
         action='store_true',
         help='Set to omit the plots of the predicted values')
+    parser.add_argument(
+        '-s',
+        '--silence',
+        action='store_true',
+        help='Set to replace periodicity estimation with silence head predictions')
     return parser.parse_known_args()[0]
 
 

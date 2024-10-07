@@ -15,9 +15,11 @@ def from_audio(
     audio,
     sample_rate,
     checkpoint=None,
-    gpu=None):
+    gpu=None,
+    silence=False):
     """Plot logits with pitch overlay"""
     logits = []
+    logits_silence = []
 
     # Preprocess audio
     for frames in penn.preprocess(
@@ -36,12 +38,26 @@ def from_audio(
             frames = torch.cat(frames_chunks, dim=-1)
 
         # Infer
-        logits.append(penn.infer(frames, checkpoint=checkpoint).detach())
+        logits_dict = penn.infer(frames, checkpoint=checkpoint)
+        logits.append(logits_dict[penn.model.KEY_LOGITS].detach())
+
+        try:
+            logits_silence.append(
+                    torch.sigmoid(
+                        logits_dict[penn.model.KEY_SILENCE].detach()))
+        except KeyError as e:
+            print(f"from_audio KeyError: {e}")
 
     # Concatenate results
     if penn.FCN:
         logits = torch.cat(logits, dim=-2)
         logits = logits.permute(3, 1, 2, 0)
+
+        try:
+            logits_silence = torch.cat(logits_silence, dim=-2)
+        except (RuntimeError, ValueError) as e:
+            logits_silence = []
+            print(f"from_audio exception: {e}")
     else:
         logits = torch.cat(logits)
     pitch = None
@@ -62,6 +78,9 @@ def from_audio(
             posinf=torch.max(logits[torch.logical_not(torch.isposinf(logits))])
             )
     logits = torch.softmax(logits, dim=2)
+
+    if silence and len(logits_silence) > 0:
+        periodicity = logits_silence
 
     return pitch, times, periodicity, logits
 
@@ -167,7 +186,8 @@ def from_file_to_file(audio_file,
                       multipitch=False,
                       threshold=0.5,
                       plot_logits=False,
-                      no_pred=True):
+                      no_pred=True,
+                      silence=False):
     # Load audio
     audio = penn.load.audio(audio_file)
 
@@ -186,7 +206,7 @@ def from_file_to_file(audio_file,
     audio = audio[..., start_frame : end_frame]
 
     # get logits
-    pred_freq, pred_times, periodicity, logits = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu)
+    pred_freq, pred_times, periodicity, logits = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu, silence=silence)
     pred_times += start
 
     if not plot_logits:

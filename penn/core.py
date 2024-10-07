@@ -435,13 +435,13 @@ def infer(frames, checkpoint=None):
         with inference_context(infer.model):
 
             # Infer
-            logits = infer.model(frames)
+            logits_dict = infer.model(frames)
 
         # If we're benchmarking, make sure inference finishes within timer
-        if penn.BENCHMARK and logits.device.type == 'cuda':
-            torch.cuda.synchronize(logits.device)
+        if penn.BENCHMARK and logits_dict[penn.model.KEY_LOGITS].device.type == 'cuda':
+            torch.cuda.synchronize(logits_dict[penn.model.KEY_LOGITS].device)
 
-        return logits
+        return logits_dict
 
 
 def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
