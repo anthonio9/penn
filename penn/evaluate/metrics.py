@@ -43,8 +43,8 @@ class Metrics:
             metrics_dict |= self.pitch_metrics()
             metrics_dict |= self.f1_silence() 
 
-            if penn.PITCH_CATS > 1:
-               metrics_dict |= self.multi_pitch_metrics() 
+            # if penn.PITCH_CATS > 1:
+            #    metrics_dict |= self.multi_pitch_metrics() 
 
             return metrics_dict
 
@@ -72,11 +72,11 @@ class Metrics:
                 self.f1.update(periodicity, voiced)
 
                 if logits_silence is not None:
-                    logits_silence = logits_silence.detach()
+                    logits_silence = torch.sigmoid(logits_silence.detach())
                     self.f1_silence.update(logits_silence, voiced)
 
-                if penn.PITCH_CATS > 1:
-                   self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
+                # if penn.PITCH_CATS > 1:
+                #    self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
 
     def reset(self):
         self.accuracy.reset()

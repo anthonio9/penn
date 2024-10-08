@@ -20,14 +20,32 @@ import penn
 def datasets(
     datasets=penn.EVALUATION_DATASETS,
     checkpoint=None,
-    gpu=None):
+    gpu=None,
+    benchmark=False,
+    evaluate_periodicity=False,
+    iterations=None):
     """Perform evaluation"""
     # Make output directory
     directory = penn.EVAL_DIR / penn.CONFIG
     directory.mkdir(exist_ok=True, parents=True)
 
     # Evaluate pitch estimation quality and save logits
-    pitch_quality(directory, datasets, checkpoint, gpu)
+    pitch_quality(directory, datasets, checkpoint, gpu, iterations=iterations)
+
+    # Perform benchmarking on CPU
+    if benchmark:
+        benchmark_results = {'cpu': benchmark(datasets, checkpoint)}
+
+        # PYIN and DIO do not have GPU support
+        if penn.METHOD not in ['dio', 'pyin']:
+            benchmark_results ['gpu'] = benchmark(datasets, checkpoint, gpu)
+
+        # Write benchmarking information
+        with open(penn.EVAL_DIR / penn.CONFIG / 'time.json', 'w') as file:
+            json.dump(benchmark_results, file, indent=4)
+
+    if not evaluate_periodicity:
+        return
 
     with tempfile.TemporaryDirectory() as directory:
         directory = Path(directory)
@@ -57,16 +75,6 @@ def datasets(
         with open(file, 'w') as file:
             json.dump(periodicity_results, file, indent=4)
 
-    # Perform benchmarking on CPU
-    benchmark_results = {'cpu': benchmark(datasets, checkpoint)}
-
-    # PYIN and DIO do not have GPU support
-    if penn.METHOD not in ['dio', 'pyin']:
-        benchmark_results ['gpu'] = benchmark(datasets, checkpoint, gpu)
-
-    # Write benchmarking information
-    with open(penn.EVAL_DIR / penn.CONFIG / 'time.json', 'w') as file:
-        json.dump(benchmark_results, file, indent=4)
 
 
 ###############################################################################
@@ -396,7 +404,8 @@ def pitch_quality(
     directory,
     datasets=penn.EVALUATION_DATASETS,
     checkpoint=None,
-    gpu=None):
+    gpu=None,
+    iterations=None):
     """Evaluate pitch estimation quality"""
     device = torch.device('cpu' if gpu is None else f'cuda:{gpu}')
 
@@ -416,6 +425,8 @@ def pitch_quality(
 
     # Aggregate metrics over all datasets
     aggregate_metrics = metric_fn()
+
+    dataset_iterator = 0
 
     # Evaluate each dataset
     for dataset in datasets:
@@ -453,14 +464,19 @@ def pitch_quality(
                     frames = frames.to(device)
 
                     # Slice features and copy to GPU
-                    start = i * penn.EVALUATION_BATCH_SIZE
+                    try:
+                        start = i * penn.EVALUATION_BATCH_SIZE
+                    except TypeError:
+                        start = 0
+
                     end = start + len(frames)
                     batch_bins = bins[:, start:end].to(device)
                     batch_pitch = pitch[:, start:end].to(device)
                     batch_voiced = voiced[:, start:end].to(device)
 
                     # Infer
-                    batch_logits = penn.infer(frames, checkpoint).detach()
+                    batch_dict = penn.infer(frames, checkpoint)
+                    batch_logits = batch_dict[penn.model.KEY_LOGITS].detach()
 
                     # Update metrics
                     args = (
@@ -468,6 +484,10 @@ def pitch_quality(
                         batch_bins,
                         batch_pitch,
                         batch_voiced)
+
+                    if penn.model.KEY_SILENCE in batch_dict:
+                        args += (batch_dict[penn.model.KEY_SILENCE].detach(), )
+
                     file_metrics.update(*args)
                     dataset_metrics.update(*args)
                     aggregate_metrics.update(*args)
@@ -556,6 +576,10 @@ def pitch_quality(
             # Copy results
             granular[f'{dataset}/{stem[0]}'] = file_metrics()
         overall[dataset] = dataset_metrics()
+
+        if iterations is not None and dataset_iterator > iterations:
+            break
+
     overall['aggregate'] = aggregate_metrics()
 
     # Write to json files
