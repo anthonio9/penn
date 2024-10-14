@@ -32,7 +32,7 @@ def parse_args():
         help='Enable benchmaring the model, get times of inference on CPU and GPU')
     parser.add_argument(
         '-ep',
-        '--evaluate-periodicity',
+        '--evaluate_periodicity',
         action='store_true',
         help='Enable periodicity evaluation')
     parser.add_argument(

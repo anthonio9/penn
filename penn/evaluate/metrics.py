@@ -26,7 +26,6 @@ class Metrics:
         self.loss = Loss()
         self.pitch_metrics = PitchMetrics()
         self.multi_pitch_metrics = MutliPitchMetrics()
-        self.f1_silence = F1(prefix='silence-')
 
     def __call__(self):
         if penn.LOSS_MULTI_HOT:
@@ -41,23 +40,22 @@ class Metrics:
                     }
             metrics_dict |= self.f1() 
             metrics_dict |= self.pitch_metrics()
-            metrics_dict |= self.f1_silence() 
 
             # if penn.PITCH_CATS > 1:
             #    metrics_dict |= self.multi_pitch_metrics() 
 
             return metrics_dict
 
-    def update(self, logits, bins, target, voiced, logits_silence=None):
+    def update(self, logits_dict, bins, target, voiced):
         # Detach from graph
-        logits = logits.detach()
+        logits = logits_dict[penn.model.KEY_LOGITS]
 
         # Update loss
         binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
         self.loss.update(logits[:, :penn.PITCH_BINS], binsT)
 
         with torchutil.time.context('decode'):
-            predicted, pitch, periodicity = penn.postprocess(logits)
+            predicted, pitch, periodicity = penn.postprocess(logits_dict)
 
             if not penn.LOSS_MULTI_HOT:
                 # Decode bins, pitch, and periodicity
@@ -71,10 +69,6 @@ class Metrics:
                 # Update periodicity metrics
                 self.f1.update(periodicity, voiced)
 
-                if logits_silence is not None:
-                    logits_silence = torch.sigmoid(logits_silence.detach())
-                    self.f1_silence.update(logits_silence, voiced)
-
                 # if penn.PITCH_CATS > 1:
                 #    self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
 
@@ -84,7 +78,6 @@ class Metrics:
         self.loss.reset()
         self.pitch_metrics.reset()
         self.multi_pitch_metrics.reset()
-        self.f1_silence.reset()
 
 
 class PitchMetrics:
@@ -364,6 +357,8 @@ class F1:
                 [2 ** -i for i in range(1, 11)] +
                 [.1 * i for i in range(10)])))
         self.thresholds = thresholds
+        self.accuracy = [
+            torchutil.metrics.Accuracy() for _ in range(len(thresholds))]
         self.precision = [
             torchutil.metrics.Precision() for _ in range(len(thresholds))]
         self.recall = [
@@ -372,11 +367,13 @@ class F1:
 
     def __call__(self):
         result = {}
-        for threshold, precision, recall in zip(
+        for threshold, accuracy, precision, recall in zip(
             self.thresholds,
+            self.accuracy,
             self.precision,
             self.recall
         ):
+            accuracy = accuracy()
             precision = precision()
             recall = recall()
             try:
@@ -385,23 +382,27 @@ class F1:
                 f1 = 0.
             result |= {
                 f'{self.prefix}f1-{threshold:.6f}': f1,
+                f'{self.prefix}accuracy-{threshold:.6f}': accuracy,
                 f'{self.prefix}precision-{threshold:.6f}': precision,
                 f'{self.prefix}recall-{threshold:.6f}': recall}
         return result
 
     def update(self, periodicity, voiced):
-        for threshold, precision, recall in zip(
+        for threshold, accuracy, precision, recall in zip(
             self.thresholds,
+            self.accuracy,
             self.precision,
             self.recall
         ):
             predicted = penn.voicing.threshold(periodicity, threshold)
+            accuracy.update(predicted, voiced)
             precision.update(predicted, voiced)
             recall.update(predicted, voiced)
 
     def reset(self):
         """Reset the F1 score"""
-        for precision, recall in zip(self.precision, self.recall):
+        for accuracy, precision, recall in zip(self.accuracy, self.precision, self.recall):
+            accuracy.reset()
             precision.reset()
             recall.reset()
 

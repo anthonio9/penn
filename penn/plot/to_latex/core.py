@@ -64,9 +64,15 @@ def from_audio(
     times = None
     periodicity = None
 
+    logits_dict = {}
+    logits_dict[penn.model.KEY_LOGITS] = logits
+
+    if len(logits_silence) > 0:
+        logits_dict[penn.model.KEY_SILENCE] = logits_silence
+
     with torchutil.time.context('decode'):
         # pitch is in Hz
-        predicted, pitch, periodicity = penn.postprocess(logits)
+        predicted, pitch, periodicity = penn.postprocess(logits_dict)
         pitch = pitch.detach().numpy()[0, ...]
         # pitch = np.split(pitch, pitch.shape[0])
         times = penn.HOPSIZE_SECONDS * np.arange(pitch[0].shape[-1])

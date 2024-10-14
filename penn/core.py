@@ -444,8 +444,26 @@ def infer(frames, checkpoint=None):
         return logits_dict
 
 
-def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
-    """Convert model output to pitch and periodicity"""
+def postprocess(logits_dict : dict[str, torch.Tensor],
+                fmin : float=penn.FMIN,
+                fmax : float=penn.FMAX) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Convert model output to pitch and periodicity.
+
+    Parameters
+    ----------
+    logits_dict : dict of torch.Tensors
+        Dictionary of model outputs with penn.model.KEY_LOGITS and optionally penn.model.KEY_SILENCE keys.
+        If penn.model.KEY_SILENCE is present, then periodicity is set to the sigmoid of the silence logits.
+    fmin : float
+        The frequency of the smallest bin.
+    fmax : float
+        The frequency of the largest bin.
+
+    Returns
+    -------
+    tuple of torch.Tensors [pitch, periodicity]
+        Predicted pitch represented in both raw bins and frequency tensors followed by the periodicity.
+    """
     # Turn off gradients
     with torch.inference_mode():
 
@@ -457,6 +475,7 @@ def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
 
         # Remove frequencies outside of allowable range
         # below works with shapes [128, 1440, 1] and [128, 6, 1440, 1]
+        logits = logits_dict[penn.model.KEY_LOGITS]
         logits[..., :minidx, :] = -float('inf')
         logits[..., maxidx:, :] = -float('inf')
 
@@ -471,7 +490,9 @@ def postprocess(logits, fmin=penn.FMIN, fmax=penn.FMAX):
             raise ValueError(f'Decoder method {penn.DECODER} is not defined')
 
         # Decode periodicity from logits
-        if penn.PERIODICITY == 'entropy':
+        if penn.model.KEY_SILENCE in logits_dict:
+            periodicity = torch.sigmoid(logits_dict[penn.model.KEY_SILENCE])
+        elif penn.PERIODICITY == 'entropy':
             periodicity = penn.periodicity.entropy(logits)
         elif penn.PERIODICITY == 'max':
             periodicity = penn.periodicity.max(logits)
@@ -984,3 +1005,19 @@ def peak_notes_to_peak_array(peak_list):
 
     peak_array_masked = np.ma.MaskedArray(peak_array, peak_array == -1)
     return peak_array
+
+
+def logits_dict_to_device(logits_dict, device):
+    new_logits_dict = {}
+    for key, value in logits_dict.items():
+        new_logits_dict[key] = value.to(device)
+
+    return new_logits_dict
+
+
+def logits_dict_detach(logits_dict):
+    new_logits_dict = {}
+    for key, value in logits_dict.items():
+        new_logits_dict[key] = value.detach()
+
+    return new_logits_dict

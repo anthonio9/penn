@@ -426,10 +426,11 @@ def pitch_quality(
     # Aggregate metrics over all datasets
     aggregate_metrics = metric_fn()
 
-    dataset_iterator = 0
 
     # Evaluate each dataset
     for dataset in datasets:
+
+        dataset_iterator = 0
 
         # Reset dataset metrics
         dataset_metrics.reset()
@@ -575,10 +576,12 @@ def pitch_quality(
 
             # Copy results
             granular[f'{dataset}/{stem[0]}'] = file_metrics()
-        overall[dataset] = dataset_metrics()
 
-        if iterations is not None and dataset_iterator > iterations:
-            break
+            if iterations is not None and dataset_iterator > iterations:
+                break
+
+            dataset_iterator += 1
+        overall[dataset] = dataset_metrics()
 
     overall['aggregate'] = aggregate_metrics()
 
