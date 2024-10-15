@@ -41,8 +41,8 @@ class Metrics:
             metrics_dict |= self.f1() 
             metrics_dict |= self.pitch_metrics()
 
-            # if penn.PITCH_CATS > 1:
-            #    metrics_dict |= self.multi_pitch_metrics() 
+            if penn.PITCH_CATS > 1:
+               metrics_dict |= self.multi_pitch_metrics() 
 
             return metrics_dict
 
@@ -69,8 +69,8 @@ class Metrics:
                 # Update periodicity metrics
                 self.f1.update(periodicity, voiced)
 
-                # if penn.PITCH_CATS > 1:
-                #    self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
+                if penn.PITCH_CATS > 1:
+                   self.multi_pitch_metrics.update(pitch, periodicity, target, voiced)
 
     def reset(self):
         self.accuracy.reset()
@@ -120,7 +120,6 @@ class MutliPitchMetrics:
                 [.1 * i for i in range(10)])))
 
         self.thresholds = thresholds
-        self.frca = [FRCA() for _ in range(len(thresholds))]
         self.frca2 = [FRCA2() for _ in range(len(thresholds))]
         self.frmse = [RMSE() for _ in range(len(thresholds))]
         self.frmse2 = [FRMSE2() for _ in range(len(thresholds))]
@@ -128,8 +127,7 @@ class MutliPitchMetrics:
 
     def __call__(self):
         result = {}
-        for frca, frca2, frmse, frmse2, frpa, threshold in zip(
-            self.frca,
+        for frca2, frmse, frmse2, frpa, threshold in zip(
             self.frca2,
             self.frmse,
             self.frmse2,
@@ -137,7 +135,6 @@ class MutliPitchMetrics:
             self.thresholds
         ):
             result |= {
-                f'frca-{threshold:.6f}': frca(),
                 f'frca2-{threshold:.6f}': frca2(),
                 f'frmse-{threshold:.6f}': frmse(),
                 f'frmse2-{threshold:.6f}': frmse2(),
@@ -146,8 +143,7 @@ class MutliPitchMetrics:
         return result
 
     def update(self, pitch, periodicity, target, target_voiced):
-        for frca, frca2, frmse, frmse2, frpa, threshold in zip(
-            self.frca,
+        for frca2, frmse, frmse2, frpa, threshold in zip(
             self.frca2,
             self.frmse,
             self.frmse2,
@@ -181,22 +177,19 @@ class MutliPitchMetrics:
                 target_cents = penn.convert.frequency_to_cents(target_array)
 
                 # Update metrics
-                frca.update(pitch_cents, target_cents, target_voiced_compressed)
                 frca2.update(pitch_cents, target_cents, target_voiced_compressed)
                 frmse.update(pitch_cents, target_cents)
                 frmse2.update(pitch_cents, target_cents, target_voiced_compressed)
                 frpa.update(pitch_cents, target_cents)
 
     def reset(self):
-        for frca, frca2, frmse, frmse2, frpa in zip(
-            self.frca,
+        for frca2, frmse, frmse2, frpa in zip(
             self.frca2,
             self.frmse,
             self.frmse2,
             self.frpa
         ):
             # reset metrics
-            frca.reset()
             frca2.reset()
             frmse.reset()
             frmse2.reset()
@@ -238,7 +231,7 @@ class FRCA2(torchutil.metrics.Average):
     def update(self, predicted, target, target_voiced):
         target_tmp = target.clone()
 
-        # subtrack each row of predicted from the target
+        # subtract each row of predicted from the target
         for ind in range(penn.PITCH_CATS):
             # evaluate on per-string basis, row by row of voiced target
             voiced_row = target_voiced[..., ind, :].squeeze()
