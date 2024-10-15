@@ -530,6 +530,34 @@ def postprocess_with_periodicity(logits, pthreshold, fmin=penn.FMIN, fmax=penn.F
     return None
 
 
+def remove_empty_timestamps(pitch, voiced):
+    """Remove timestamps where the voiced array indicated silence on all channels.
+
+    The function will checks the pitch at a timestamp given by the voiced array,
+    will return unique values from the pitch array if voiced and empty if not.
+    The timestamps where all the strings are unvoiced are deleted from the array.
+
+    Paramters:
+        pitch - numpy array
+            [1, C, N] size array returned by postprocess or postprocess_with_periodicity
+
+        voiced - numpy array indicating the voiced parts
+            [1, C, N] size
+
+    Returns:
+        pitch_array - numpy array
+            [1, C, M] size where M - number of voiced time steps
+
+        voiced - numpy array of size [1, C, M]
+            array indicating the voiced pitch over all pitch categories.
+            Every category has the same number voiced array.
+    """
+    # tell if voiced at a given timestamp, shape: [N]
+    voiced_summed = voiced.sum(dim=1).squeeze().bool()
+
+    return pitch[..., voiced_summed], voiced[..., voiced_summed]
+
+
 def postprocess_pitch_and_sort(pitch, voiced):
     """Convert an array of pitch to a list of sorted pitches
 
@@ -553,13 +581,11 @@ def postprocess_pitch_and_sort(pitch, voiced):
             Every category has the same number voiced array.
             
     """
+    # tell if voiced at a given timestamp, shape: [N]
     voiced_summed = voiced.sum(dim=1).squeeze().bool()
 
-    # if penn.FCN:
-    #     breakpoint()
-    #     pitch_tmp = pitch.permute(1, 0, 2)
-    #     pitch_voiced = pitch_tmp[..., voiced_summed]
-    # else:
+    breakpoint()
+
     pitch_voiced = pitch[..., voiced_summed]
     n = pitch_voiced.shape[-1]
 
