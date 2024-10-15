@@ -46,7 +46,11 @@ class Metrics:
 
             return metrics_dict
 
-    def update(self, logits_dict, bins, target, voiced):
+    def update(self, 
+               logits_dict : dict[str, torch.tensor],
+               bins : torch.Tensor,
+               target : torch.Tensor,
+               voiced : torch.Tensor):
         # Detach from graph
         logits = logits_dict[penn.model.KEY_LOGITS]
 
@@ -160,27 +164,31 @@ class MutliPitchMetrics:
             target_chunks = target.chunk(dim=0, chunks=BS)
             target_voiced_chunks = target_voiced.chunk(dim=0, chunks=BS)
 
-            for pitch_with_periodicity, target, target_voiced in zip(pitch_with_periodicity_chunks, target_chunks, target_voiced_chunks):
-                pitch_array, _ = penn.core.postprocess_pitch_and_sort(
-                        pitch_with_periodicity,
-                        target_voiced)
+            pitch_restored = torch.cat(pitch_with_periodicity_chunks, dim=-1)
+            target_restored = torch.cat(target_chunks, dim=-1)
+            target_voiced_restored = torch.cat(target_voiced_chunks, dim=-1)
 
-                target_array, target_voiced_compressed = penn.core.postprocess_pitch_and_sort(
-                        target, target_voiced)
+            # for pitch_with_periodicity, target, target_voiced in zip(pitch_with_periodicity_chunks, target_chunks, target_voiced_chunks):
+            pitch_array, _ = penn.core.postprocess_pitch_and_sort(
+                    pitch_restored,
+                    target_voiced_restored)
 
-                # add a very small number to get rid off possible log errors
-                pitch_array[pitch_array == 0] = penn.FMIN + 10e-5
-                target_array[target_array == 0] = penn.FMIN + 10e-5
-                # target_array[torch.logical_not(target_voiced_compressed)] = penn.FMIN + 10e-5
+            target_array, target_voiced_compressed = penn.core.postprocess_pitch_and_sort(
+                    target_restored, target_voiced_restored)
 
-                pitch_cents = penn.convert.frequency_to_cents(pitch_array)
-                target_cents = penn.convert.frequency_to_cents(target_array)
+            # add a very small number to get rid off possible log errors
+            pitch_array[pitch_array == 0] = penn.FMIN + 10e-5
+            target_array[target_array == 0] = penn.FMIN + 10e-5
+            # target_array[torch.logical_not(target_voiced_compressed)] = penn.FMIN + 10e-5
 
-                # Update metrics
-                frca2.update(pitch_cents, target_cents, target_voiced_compressed)
-                frmse.update(pitch_cents, target_cents)
-                frmse2.update(pitch_cents, target_cents, target_voiced_compressed)
-                frpa.update(pitch_cents, target_cents)
+            pitch_cents = penn.convert.frequency_to_cents(pitch_array)
+            target_cents = penn.convert.frequency_to_cents(target_array)
+
+            # Update metrics
+            frca2.update(pitch_cents, target_cents, target_voiced_compressed)
+            frmse.update(pitch_cents, target_cents)
+            frmse2.update(pitch_cents, target_cents, target_voiced_compressed)
+            frpa.update(pitch_cents, target_cents)
 
     def reset(self):
         for frca2, frmse, frmse2, frpa in zip(

@@ -481,13 +481,10 @@ def pitch_quality(
 
                     # Update metrics
                     args = (
-                        batch_logits,
+                        penn.core.logits_dict_detach(batch_dict),
                         batch_bins,
                         batch_pitch,
                         batch_voiced)
-
-                    if penn.model.KEY_SILENCE in batch_dict:
-                        args += (batch_dict[penn.model.KEY_SILENCE].detach(), )
 
                     file_metrics.update(*args)
                     dataset_metrics.update(*args)
