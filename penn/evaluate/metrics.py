@@ -124,30 +124,42 @@ class MutliPitchMetrics:
                 [.1 * i for i in range(10)])))
 
         self.thresholds = thresholds
-        self.frca2 = [FRCA2() for _ in range(len(thresholds))]
-        self.frmse2 = [FRMSE2() for _ in range(len(thresholds))]
-        self.frpa2 = [FRPA2() for _ in range(len(thresholds))]
+        self.mrca = [FRCA2() for _ in range(len(thresholds))]
+        self.mrmse = [FRMSE2() for _ in range(len(thresholds))]
+        self.mrpa = [FRPA2() for _ in range(len(thresholds))]
+        self.mrca2 = [FRCA2() for _ in range(len(thresholds))]
+        self.mrmse2 = [FRMSE2() for _ in range(len(thresholds))]
+        self.mrpa2 = [FRPA2() for _ in range(len(thresholds))]
 
     def __call__(self):
         result = {}
-        for frca2, frmse2, frpa2, threshold in zip(
-            self.frca2,
-            self.frmse2,
-            self.frpa2,
+        for mrca, mrmse, mrpa, mrca2, mrmse2, mrpa2, threshold in zip(
+            self.mrca,
+            self.mrmse,
+            self.mrpa,
+            self.mrca2,
+            self.mrmse2,
+            self.mrpa2,
             self.thresholds
         ):
             result |= {
-                f'frca2-{threshold:.6f}': frca2(),
-                f'frmse2-{threshold:.6f}': frmse2(),
-                f'frpa2-{threshold:.6f}': frpa2()}
+                f'mrca-{threshold:.6f}': mrca(),
+                f'mrmse-{threshold:.6f}': mrmse(),
+                f'mrpa-{threshold:.6f}': mrpa(),
+                f'mrca2-{threshold:.6f}': mrca2(),
+                f'mrmse2-{threshold:.6f}': mrmse2(),
+                f'mrpa2-{threshold:.6f}': mrpa2()}
 
         return result
 
     def update(self, pitch, periodicity, target, target_voiced):
-        for frca2, frmse2, frpa2, threshold in zip(
-            self.frca2,
-            self.frmse2,
-            self.frpa2,
+        for mrca, mrmse, mrpa, mrca2, mrmse2, mrpa2, threshold in zip(
+            self.mrca,
+            self.mrmse,
+            self.mrpa,
+            self.mrca2,
+            self.mrmse2,
+            self.mrpa2,
             self.thresholds
         ):
             pitch_with_periodicity = pitch.clone().detach()
@@ -172,6 +184,9 @@ class MutliPitchMetrics:
             target_array, target_voiced_compressed = penn.core.remove_empty_timestamps(
                     target_restored, target_voiced_restored)
 
+            # remember for the "Special case" section
+            predicted_voiced = torch.logical_not(pitch_array == 0)
+
             # add a very small number to get rid off possible log errors
             pitch_array[pitch_array == 0] = penn.FMIN + 10e-5
             target_array[target_array == 0] = penn.FMIN + 10e-5
@@ -181,20 +196,38 @@ class MutliPitchMetrics:
             target_cents = penn.convert.frequency_to_cents(target_array)
 
             # Update metrics
-            frca2.update(pitch_cents, target_cents, target_voiced_compressed)
-            frmse2.update(pitch_cents, target_cents, target_voiced_compressed)
-            frpa2.update(pitch_cents, target_cents, target_voiced_compressed)
+            mrca.update(pitch_cents, target_cents, target_voiced_compressed)
+            mrpa.update(pitch_cents, target_cents, target_voiced_compressed)
+            mrmse.update(pitch_cents, target_cents, target_voiced_compressed)
+
+            # Special case with deleted empty timestamps in the pitch array
+            # find where predicted pitch is empty
+            pitch_cents, _ = penn.core.remove_empty_timestamps(
+                    pitch_cents,
+                    predicted_voiced)
+            target_cents, target_voiced_compressed = penn.core.remove_empty_timestamps(
+                    target_cents, predicted_voiced)
+
+            mrca2.update(pitch_cents, target_cents, target_voiced_compressed)
+            mrpa2.update(pitch_cents, target_cents, target_voiced_compressed)
+            mrmse2.update(pitch_cents, target_cents, target_voiced_compressed)
 
     def reset(self):
-        for frca2, frmse2, frpa2 in zip(
-            self.frca2,
-            self.frmse2,
-            self.frpa2
+        for mrca, mrmse, mrpa, mrca2, mrmse2, mrpa2 in zip(
+            self.mrca,
+            self.mrmse,
+            self.mrpa,
+            self.mrca2,
+            self.mrmse2,
+            self.mrpa2
         ):
             # reset metrics
-            frca2.reset()
-            frmse2.reset()
-            frpa2.reset()
+            mrca.reset()
+            mrmse.reset()
+            mrpa.reset()
+            mrca2.reset()
+            mrmse2.reset()
+            mrpa2.reset()
 
 ###############################################################################
 # Individual metrics

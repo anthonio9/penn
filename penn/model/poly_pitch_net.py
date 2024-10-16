@@ -102,6 +102,7 @@ class PolyPENNFCN(PolyPitchNet):
 
 class PolyPENNFCN2(torch.nn.Module):
     def forward(self, frames : torch.Tensor):
+
         frames = frames.squeeze(dim=1)
 
         frames_list = torch.chunk(frames, chunks=frames.shape[-1] // penn.HOPSIZE, dim=-1)
@@ -111,7 +112,6 @@ class PolyPENNFCN2(torch.nn.Module):
         # [BS, T, HOPSIZE] => [BS, HOPSIZE, T]
         frames = torch.permute(frames, (0, 2, 1))
 
-        # breakpoint()
         main_logits = self.main_sequence(frames)
         logits = self.pitch_head(main_logits)
         silence_logits = self.silence_head(main_logits)
