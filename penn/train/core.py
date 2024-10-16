@@ -278,18 +278,11 @@ def evaluate(directory, step, model, gpu, condition, loader, log_wandb):
 
             # Forward pass
             logits_dict = model(audio.to(device))
-            logits = logits_dict[penn.model.KEY_LOGITS]
-            logits_silence = None
-
-            if penn.model.KEY_LOGITS in logits_dict:
-                logits_silence = logits_dict[penn.model.KEY_SILENCE]
+            logits_dict = penn.core.logits_dict_to_device(logits_dict, device)
 
             binsT = bins.permute(*torch.arange(bins.ndim - 1, -1, -1))
             pitchT = pitch.permute(*torch.arange(pitch.ndim - 1, -1, -1))
             voicedT = voiced.permute(*torch.arange(voiced.ndim - 1, -1, -1))
-            logits_silenceT = logits_silence.permute(*torch.arange(logits_silence.ndim -1, -1, -1))
-
-            logits_dict = penn.core.logits_dict_to_device(logits_dict, device)
 
             # Update metrics
             metrics.update(
