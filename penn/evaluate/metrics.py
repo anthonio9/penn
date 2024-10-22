@@ -176,37 +176,38 @@ class MutliPitchMetrics:
             target_restored = torch.cat(target_chunks, dim=-1)
             target_voiced_restored = torch.cat(target_voiced_chunks, dim=-1)
 
-            # for pitch_with_periodicity, target, target_voiced in zip(pitch_with_periodicity_chunks, target_chunks, target_voiced_chunks):
-            pitch_array, _ = penn.core.remove_empty_timestamps(
-                    pitch_restored,
-                    target_voiced_restored)
-
-            target_array, target_voiced_compressed = penn.core.remove_empty_timestamps(
-                    target_restored, target_voiced_restored)
-
             # remember for the "Special case" section
-            predicted_voiced = torch.logical_not(pitch_array == 0)
+            predicted_voiced = torch.logical_not(pitch_restored == 0)
 
             # add a very small number to get rid off possible log errors
-            pitch_array[pitch_array == 0] = penn.FMIN + 10e-5
-            target_array[target_array == 0] = penn.FMIN + 10e-5
-            # target_array[torch.logical_not(target_voiced_compressed)] = penn.FMIN + 10e-5
+            pitch_restored[pitch_restored == 0] = penn.FMIN + 10e-5
+            target_restored[target_restored == 0] = penn.FMIN + 10e-5
 
-            pitch_cents = penn.convert.frequency_to_cents(pitch_array)
-            target_cents = penn.convert.frequency_to_cents(target_array)
+            pitch_cents = penn.convert.frequency_to_cents(pitch_restored)
+            target_cents = penn.convert.frequency_to_cents(target_restored)
+
+            # for pitch_with_periodicity, target, target_voiced in zip(pitch_with_periodicity_chunks, target_chunks, target_voiced_chunks):
+            pitch_cents_not_empty, _ = penn.core.remove_empty_timestamps(
+                    pitch_cents,
+                    target_voiced_restored)
+
+            target_cents_not_empty, target_voiced_compressed = penn.core.remove_empty_timestamps(
+                    target_cents, target_voiced_restored)
 
             # Update metrics
-            mrca.update(pitch_cents, target_cents, target_voiced_compressed)
-            mrpa.update(pitch_cents, target_cents, target_voiced_compressed)
-            mrmse.update(pitch_cents, target_cents, target_voiced_compressed)
+            mrca.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed)
+            mrpa.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed)
+            mrmse.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed)
 
             # Special case with deleted empty timestamps in the pitch array
-            # find where predicted pitch is empty
-            pitch_cents, _ = penn.core.remove_empty_timestamps(
-                    pitch_cents,
-                    predicted_voiced)
-            target_cents, target_voiced_compressed = penn.core.remove_empty_timestamps(
-                    target_cents, predicted_voiced)
+            # get common timestamps
+            pred_voiced_summed = predicted_voiced.sum(dim=1).squeeze().bool()
+            tar_voiced_summed = target_voiced_restored.sum(dim=1).squeeze().bool()
+            common_voiced = torch.logical_and(pred_voiced_summed, tar_voiced_summed)
+
+            target_voiced_compressed = target_voiced_restored[..., common_voiced]
+            pitch_cents = pitch_cents[..., common_voiced]
+            target_cents = target_cents[..., common_voiced]
 
             mrca2.update(pitch_cents, target_cents, target_voiced_compressed)
             mrpa2.update(pitch_cents, target_cents, target_voiced_compressed)
