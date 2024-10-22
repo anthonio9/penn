@@ -209,9 +209,12 @@ class MutliPitchMetrics:
             pitch_cents = pitch_cents[..., common_voiced]
             target_cents = target_cents[..., common_voiced]
 
-            mrca2.update(pitch_cents, target_cents, target_voiced_compressed)
-            mrpa2.update(pitch_cents, target_cents, target_voiced_compressed)
-            mrmse2.update(pitch_cents, target_cents, target_voiced_compressed)
+            try: 
+                mrca2.update(pitch_cents, target_cents, target_voiced_compressed)
+                mrpa2.update(pitch_cents, target_cents, target_voiced_compressed)
+                mrmse2.update(pitch_cents, target_cents, target_voiced_compressed)
+            except IndexError as ex:
+                print(f"MultiPitch Metrics: {ex}")
 
     def reset(self):
         for mrca, mrmse, mrpa, mrca2, mrmse2, mrpa2 in zip(
