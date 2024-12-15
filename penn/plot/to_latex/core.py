@@ -255,4 +255,5 @@ def from_file_to_file(audio_file,
             time_offset=start,
             mutlipitch=multipitch,
             threshold=threshold,
-            logits=logits)
+            logits=logits, 
+            fontsize=3)
