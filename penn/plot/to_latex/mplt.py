@@ -143,10 +143,13 @@ def plot_pitch(axis : plt.Axes,
     if set_pitch_lims:
         axis.set_ylim(ylim)
 
-    axis.set_ylabel('Frequency [Hz]', fontsize=fontsize*4)
+    axis.set_ylabel('Frequency [Hz]', fontsize=fontsize*2)
 
     if set_xlabel:
-        axis.set_xlabel('Time [s]', fontsize=fontsize*4)
+        axis.set_xlabel('Time [s]', fontsize=fontsize*2)
+
+    axis.tick_params(axis='both', which='major', labelsize=fontsize)
+    axis.tick_params(axis='both', which='minor', labelsize=fontsize)
 
 
 def plot_multipitch(axes : List[plt.Axes],
@@ -182,7 +185,7 @@ def plot_multipitch(axes : List[plt.Axes],
                    set_xlabel=False,
                    fontsize=fontsize)
 
-    axes[-1].set_xlabel("Time [s]", fontsize=fontsize*4)
+    axes[-1].set_xlabel("Time [s]", fontsize=fontsize*2)
 
 
 def plot_periodicity(axis : plt.Axes,
@@ -207,7 +210,7 @@ def plot_periodicity(axis : plt.Axes,
     # should help with removing the whitespace at the bottom of the plot
 
     twin.plot(times, periodicity_for_plot, 'g:', linewidth=2, label="periodicity")
-    twin.set_ylabel("Periodicity", fontsize=fontsize*4)
+    twin.set_ylabel("Periodicity", fontsize=fontsize*2)
 
     if threshold is not None:
         periodicity_mask = periodicity_for_plot >= threshold
@@ -252,6 +255,7 @@ def plot_with_matplotlib(
         fontsize=30,
         linewidth=0.5,
         linewidth_gt=1,
+        show_title=True,
         legend=True):
     """
     Plot stft to the given audio. Optionally put raw pitch data
@@ -329,10 +333,11 @@ def plot_with_matplotlib(
         handles.extend(t_handles)
         labels.extend(t_labels)
 
-    figure.suptitle(f"Pitch thresholded with periodicity above {threshold}, {title}", fontsize=fontsize*5)
+    if show_title:
+        figure.suptitle(f"Pitch thresholded with periodicity above {threshold}, {title}", fontsize=fontsize*3)
 
     if legend:
-        figure.legend(handles, labels, loc='lower right', fontsize=fontsize*4)
+        figure.legend(handles, labels, loc='lower right', fontsize=fontsize*2)
 
     figure.set_tight_layout({'pad' : 0.5})
 

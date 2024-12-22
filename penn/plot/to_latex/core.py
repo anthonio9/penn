@@ -197,7 +197,8 @@ def from_file_to_file(audio_file,
                       linewidth=0.5,
                       linewidth_gt=1.0,
                       fontsize=3,
-                      no_legend=False):
+                      no_legend=False,
+                      no_title=False):
     # Load audio
     audio = penn.load.audio(audio_file)
 
@@ -263,4 +264,5 @@ def from_file_to_file(audio_file,
             fontsize=fontsize,
             linewidth=linewidth,
             linewidth_gt=linewidth_gt,
-            legend=not no_legend)
+            legend=not no_legend,
+            show_title=not no_title)

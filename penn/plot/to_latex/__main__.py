@@ -87,6 +87,11 @@ def parse_args():
         default=1,
         help='Set the line width of the ground truth pitch')
     parser.add_argument(
+        '-nt',
+        '--no_title',
+        action='store_true',
+        help='Set in order to omit title plotting')
+    parser.add_argument(
         '-noleg',
         '--no_legend',
         action='store_true',
