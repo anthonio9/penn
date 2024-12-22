@@ -249,7 +249,10 @@ def plot_with_matplotlib(
         time_offset=0,
         mutlipitch=False,
         logits=None,
-        fontsize=30):
+        fontsize=30,
+        linewidth=0.5,
+        linewidth_gt=1,
+        legend=True):
     """
     Plot stft to the given audio. Optionally put raw pitch data
     or even thresholded periodicity data on top of it.
@@ -281,7 +284,7 @@ def plot_with_matplotlib(
         if mutlipitch:
             plot_multipitch(
                     axes, pred_pitch, pred_times,
-                    linewidth=0.5,
+                    linewidth=linewidth,
                     periodicity=periodicity,
                     threshold=threshold,
                     label="predicted",
@@ -289,7 +292,7 @@ def plot_with_matplotlib(
         else:
             plot_pitch(
                     axes[0], pred_pitch, pred_times,
-                    linewidth=0.5,
+                    linewidth=linewidth,
                     periodicity=periodicity,
                     threshold=threshold,
                     label="predicted",
@@ -299,12 +302,14 @@ def plot_with_matplotlib(
         if mutlipitch:
             plot_multipitch(
                     axes, gt_pitch, gt_times,
+                    linewidth=linewidth_gt,
                     plot_red=True,
                     label="truth",
                     fontsize=fontsize)
         else:
             plot_pitch(
                     axes[0], gt_pitch, gt_times,
+                    linewidth=linewidth_gt,
                     plot_red=True,
                     label="truth",
                     fontsize=fontsize)
@@ -326,7 +331,9 @@ def plot_with_matplotlib(
 
     figure.suptitle(f"Pitch thresholded with periodicity above {threshold}, {title}", fontsize=fontsize*5)
 
-    figure.legend(handles, labels, loc='lower right', fontsize=fontsize*4)
+    if legend:
+        figure.legend(handles, labels, loc='lower right', fontsize=fontsize*4)
+
     figure.set_tight_layout({'pad' : 0.5})
 
     # figure.show()

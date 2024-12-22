@@ -68,6 +68,29 @@ def parse_args():
         '--silence',
         action='store_true',
         help='Set to replace periodicity estimation with silence head predictions')
+    parser.add_argument(
+        '-lw',
+        '--linewidth',
+        type=float,
+        default=0.5,
+        help='Set the line width of the predicted pitch')
+    parser.add_argument(
+        '-lwgt',
+        '--linewidth_gt',
+        type=float,
+        default=1,
+        help='Set the line width of the ground truth pitch')
+    parser.add_argument(
+        '-fs',
+        '--fontsize',
+        type=float,
+        default=1,
+        help='Set the line width of the ground truth pitch')
+    parser.add_argument(
+        '-noleg',
+        '--no_legend',
+        action='store_true',
+        help='Set in order to omit legend plotting')
     return parser.parse_known_args()[0]
 
 

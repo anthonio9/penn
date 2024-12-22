@@ -193,7 +193,11 @@ def from_file_to_file(audio_file,
                       threshold=0.5,
                       plot_logits=False,
                       no_pred=True,
-                      silence=False):
+                      silence=False,
+                      linewidth=0.5,
+                      linewidth_gt=1.0,
+                      fontsize=3,
+                      no_legend=False):
     # Load audio
     audio = penn.load.audio(audio_file)
 
@@ -256,4 +260,7 @@ def from_file_to_file(audio_file,
             mutlipitch=multipitch,
             threshold=threshold,
             logits=logits, 
-            fontsize=3)
+            fontsize=fontsize,
+            linewidth=linewidth,
+            linewidth_gt=linewidth_gt,
+            legend=not no_legend)
