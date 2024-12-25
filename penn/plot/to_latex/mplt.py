@@ -9,7 +9,8 @@ from typing import List
 def plot_logits(axes : plt.Axes,
                 logits : np.ndarray, 
                 hop_length_seconds=penn.HOPSIZE_SECONDS,
-                time_offset=0):
+                time_offset=0,
+                ylim=[0, 500]):
     """
     Add a plot of logits
 
@@ -37,7 +38,7 @@ def plot_logits(axes : plt.Axes,
         axis.pcolormesh(times, freqs, logits_chunk,
                         cmap="gray_r",
                         **style)
-        axis.set_ylim([0, 500])
+        axis.set_ylim(ylim)
         axis.set_xlim([times[0], times[-1]])
 
 
@@ -46,7 +47,8 @@ def plot_stft(axes : plt.Axes,
               sr=penn.SAMPLE_RATE,
               window_length=2048*4,
               hop_length=penn.data.preprocess.GSET_HOPSIZE,
-              time_offset=0):
+              time_offset=0,
+              ylim=[50, 300]):
     """
     Add a plot of STFT to given audio.
 
@@ -67,7 +69,7 @@ def plot_stft(axes : plt.Axes,
 
     for axis in axes:
         axis.pcolormesh(times, freqs, np.abs(stft), cmap='gray_r')
-        axis.set_ylim([50, 300])
+        axis.set_ylim(ylim)
         axis.set_xlim([times[0], times[-1]])
 
     # take inspiration from this post: https://dsp.stackexchange.com/a/70136
@@ -81,7 +83,7 @@ def plot_pitch(axis : plt.Axes,
                linewidth=1,
                periodicity=None,
                threshold=0.5,
-               ylim=[0, 500],
+               ylim=None,
                label : str="",
                set_xlabel=True,
                fontsize=30):
@@ -161,9 +163,13 @@ def plot_multipitch(axes : List[plt.Axes],
                     periodicity : np.ndarray=None,
                     threshold=0.5, 
                     label : str="",
-                    fontsize=30):
+                    fontsize=30,
+                    ylim=None):
 
     pitch_split = np.split(pitch, pitch.shape[0])
+
+    if ylim is None:
+        ylim = [penn.FMIN, pitch.max() * 1.2]
 
     if periodicity is not None: 
         periodicity = periodicity.squeeze()
@@ -181,7 +187,7 @@ def plot_multipitch(axes : List[plt.Axes],
                    periodicity=periodicity_slice,
                    threshold=threshold,
                    label=label, 
-                   ylim=[penn.FMIN, pitch.max() * 1.2],
+                   ylim=ylim,
                    set_xlabel=False,
                    fontsize=fontsize)
 
@@ -256,7 +262,8 @@ def plot_with_matplotlib(
         linewidth=0.5,
         linewidth_gt=1,
         show_title=True,
-        legend=True):
+        legend=True,
+        ylim=None):
     """
     Plot stft to the given audio. Optionally put raw pitch data
     or even thresholded periodicity data on top of it.
@@ -292,7 +299,8 @@ def plot_with_matplotlib(
                     periodicity=periodicity,
                     threshold=threshold,
                     label="predicted",
-                    fontsize=fontsize)
+                    fontsize=fontsize,
+                    ylim=ylim)
         else:
             plot_pitch(
                     axes[0], pred_pitch, pred_times,
@@ -300,7 +308,8 @@ def plot_with_matplotlib(
                     periodicity=periodicity,
                     threshold=threshold,
                     label="predicted",
-                    fontsize=fontsize)
+                    fontsize=fontsize, 
+                    ylim=ylim)
 
     if gt_pitch is not None and gt_times is not None:
         if mutlipitch:
@@ -309,14 +318,16 @@ def plot_with_matplotlib(
                     linewidth=linewidth_gt,
                     plot_red=True,
                     label="truth",
-                    fontsize=fontsize)
+                    fontsize=fontsize,
+                    ylim=ylim)
         else:
             plot_pitch(
                     axes[0], gt_pitch, gt_times,
                     linewidth=linewidth_gt,
                     plot_red=True,
                     label="truth",
-                    fontsize=fontsize)
+                    fontsize=fontsize,
+                    ylim=ylim)
 
     # prepare the legend 
     handles, labels = axes[-1].get_legend_handles_labels()

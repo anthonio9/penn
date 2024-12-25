@@ -198,7 +198,9 @@ def from_file_to_file(audio_file,
                       linewidth_gt=1.0,
                       fontsize=3,
                       no_legend=False,
-                      no_title=False):
+                      no_title=False,
+                      min_frequency=None,
+                      max_frequency=None):
     # Load audio
     audio = penn.load.audio(audio_file)
 
@@ -206,6 +208,10 @@ def from_file_to_file(audio_file,
 
     if checkpoint is None:
         return 
+
+    ylim = None
+    if min_frequency is not None and max_frequency is not None:
+        ylim = [min_frequency, max_frequency]
 
     # get the timestamps in frame numbers
     start_frame = round(start * penn.SAMPLE_RATE)
@@ -265,4 +271,5 @@ def from_file_to_file(audio_file,
             linewidth=linewidth,
             linewidth_gt=linewidth_gt,
             legend=not no_legend,
-            show_title=not no_title)
+            show_title=not no_title,
+            ylim=ylim)

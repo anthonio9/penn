@@ -96,6 +96,18 @@ def parse_args():
         '--no_legend',
         action='store_true',
         help='Set in order to omit legend plotting')
+    parser.add_argument(
+        '-mnf',
+        '--min_frequency',
+        type=float,
+        default=None,
+        help='Set the minimum displayed frequency')
+    parser.add_argument(
+        '-mxf',
+        '--max_frequency',
+        type=float,
+        default=None,
+        help='Set the maximum displayed frequency')
     return parser.parse_known_args()[0]
 
 
