@@ -85,7 +85,8 @@ def plot_pitch(axis : plt.Axes,
                threshold=0.5,
                ylim=None,
                label : str="",
-               set_xlabel=True,
+               plot_xlabel=True,
+               plot_ylabel=True,
                fontsize=30):
     """
     Add a plot of pitch. Optionally, set the frequency limits based
@@ -145,16 +146,18 @@ def plot_pitch(axis : plt.Axes,
     if set_pitch_lims:
         axis.set_ylim(ylim)
 
-    axis.set_ylabel('Frequency [Hz]', fontsize=fontsize*2)
+    if plot_ylabel:
+        axis.set_ylabel('Frequency [Hz]', fontsize=fontsize*2)
 
-    if set_xlabel:
+    if plot_xlabel:
         axis.set_xlabel('Time [s]', fontsize=fontsize*2)
 
     axis.tick_params(axis='both', which='major', labelsize=fontsize)
     axis.tick_params(axis='both', which='minor', labelsize=fontsize)
 
 
-def plot_multipitch(axes : List[plt.Axes],
+def plot_multipitch(fig : plt.Figure,
+                    axes : List[plt.Axes],
                     pitch : np.ndarray,
                     times : np.ndarray,
                     set_pitch_lims=True,
@@ -188,17 +191,22 @@ def plot_multipitch(axes : List[plt.Axes],
                    threshold=threshold,
                    label=label, 
                    ylim=ylim,
-                   set_xlabel=False,
+                   plot_xlabel=False,
+                   plot_ylabel=False,
                    fontsize=fontsize)
 
-    axes[-1].set_xlabel("Time [s]", fontsize=fontsize*2)
+    # fig.text(0.01, 0.5, 'Frequency [Hz]', ha='left', rotation='vertical', fontsize=fontsize)
+    fig.supylabel('Frequency [Hz]', ha='left', fontsize=fontsize)
+    fig.supxlabel('Time [s]', fontsize=fontsize)
 
 
 def plot_periodicity(axis : plt.Axes,
                      periodicity : np.ndarray,
                      times : np.ndarray,
                      threshold : float=0.05,
-                     fontsize=30):
+                     fontsize=30,
+                     plot_ylabel=True,
+                     linewidth=3):
     """
     Plot the periodicity plot with or without threshold.
     """
@@ -215,21 +223,24 @@ def plot_periodicity(axis : plt.Axes,
     # this https://stackoverflow.com/a/27198519/11287083
     # should help with removing the whitespace at the bottom of the plot
 
-    twin.plot(times, periodicity_for_plot, 'g:', linewidth=2, label="periodicity")
-    twin.set_ylabel("Periodicity", fontsize=fontsize*2)
+    twin.plot(times, periodicity_for_plot, 'y:', linewidth=linewidth, label="periodicity")
+
+    if plot_ylabel:
+        twin.set_ylabel("Periodicity", fontsize=fontsize)
 
     if threshold is not None:
         periodicity_mask = periodicity_for_plot >= threshold
         # mask periodicity under the threshold 
         periodicity_masked = np.ma.MaskedArray(periodicity_for_plot, np.logical_not(periodicity_mask))
 
-        twin.plot(times, periodicity_masked, 'm:', linewidth=2, label="periodicity thresholded")
+        twin.plot(times, periodicity_masked, 'm:', linewidth=linewidth, label="periodicity thresholded")
         handles, labels = twin.get_legend_handles_labels()
 
     return handles, labels
 
 
 def plot_multiperiodicity(
+        fig : plt.Figure,
         axes : List[plt.Axes],
         periodicity : np.ndarray,
         times : np.ndarray,
@@ -240,7 +251,10 @@ def plot_multiperiodicity(
     periodicity_list = np.split(periodicity, periodicity.shape[0])
 
     for axis, periodicity_slice in zip(axes, periodicity_list):
-        handles, labels = plot_periodicity(axis, periodicity_slice, times, threshold, fontsize=fontsize)
+        handles, labels = plot_periodicity(axis, periodicity_slice, times, threshold, fontsize=fontsize, plot_ylabel=False)
+
+    # set the ylabel on the right side of the figure
+    fig.text(0.98, 0.45, 'Periodicity', ha='left', rotation='vertical', fontsize=fontsize)
 
     return handles, labels
 
@@ -294,7 +308,10 @@ def plot_with_matplotlib(
     if pred_pitch is not None and pred_times is not None:
         if mutlipitch:
             plot_multipitch(
-                    axes, pred_pitch, pred_times,
+                    figure,
+                    axes, 
+                    pred_pitch, 
+                    pred_times,
                     linewidth=linewidth,
                     periodicity=periodicity,
                     threshold=threshold,
@@ -314,7 +331,10 @@ def plot_with_matplotlib(
     if gt_pitch is not None and gt_times is not None:
         if mutlipitch:
             plot_multipitch(
-                    axes, gt_pitch, gt_times,
+                    figure,
+                    axes, 
+                    gt_pitch,
+                    gt_times,
                     linewidth=linewidth_gt,
                     plot_red=True,
                     label="truth",
@@ -333,11 +353,11 @@ def plot_with_matplotlib(
     handles, labels = axes[-1].get_legend_handles_labels()
 
     for ind, axis in enumerate(axes):
-        axis.set_title(f"String {ind}", x=0.06, y=0.7, color='r')
+        axis.set_title(f"String {ind}", x=0.03, y=0.7, color='r', fontsize=fontsize, backgroundcolor= 'silver')
 
     if periodicity is not None:
         if mutlipitch:
-            t_handles, t_labels = plot_multiperiodicity(axes, periodicity, pred_times, threshold, fontsize=fontsize)
+            t_handles, t_labels = plot_multiperiodicity(figure, axes, periodicity, pred_times, threshold, fontsize=fontsize)
         else:
             t_handles, t_labels = plot_periodicity(axes[0], periodicity, pred_times, threshold, fontsize=fontsize)
 
@@ -348,9 +368,10 @@ def plot_with_matplotlib(
         figure.suptitle(f"Pitch thresholded with periodicity above {threshold}, {title}", fontsize=fontsize*3)
 
     if legend:
-        figure.legend(handles, labels, loc='lower right', fontsize=fontsize*2)
+        figure.legend(handles, labels, loc='lower right', fontsize=fontsize)
 
-    figure.set_tight_layout({'pad' : 0.5})
+    figure.set_tight_layout({'pad' : 0.5,
+                             'rect': (0.02, 0, 0.97, 1)})
 
     # figure.show()
     plt.show()
