@@ -11,120 +11,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 # this funciton is supposed to plot any audio track with pitch preditions over the given ground truth file, 
-def from_audio(
-    audio,
-    sample_rate,
-    checkpoint=None,
-    gpu=None,
-    silence=False):
-    """Plot logits with pitch overlay"""
-    logits = []
-    logits_silence = []
-
-    # Preprocess audio
-    for frames in penn.preprocess(
-        audio,
-        sample_rate,
-        batch_size=penn.EVALUATION_BATCH_SIZE,
-        center='half-hop'
-    ):
-
-        # Copy to device
-        frames = frames.to('cpu' if gpu is None else f'cuda:{gpu}')
-
-        if penn.FCN:
-            chunks = frames.shape[0]
-            frames_chunks = frames.chunk(chunks, dim=0)
-            frames = torch.cat(frames_chunks, dim=-1)
-
-        # Infer
-        logits_dict = penn.infer(frames, checkpoint=checkpoint)
-        logits.append(logits_dict[penn.model.KEY_LOGITS].detach())
-
-        try:
-            logits_silence.append(
-                    torch.sigmoid(
-                        logits_dict[penn.model.KEY_SILENCE].detach()))
-        except KeyError as e:
-            print(f"from_audio KeyError: {e}")
-
-    # Concatenate results
-    if penn.FCN:
-        logits = torch.cat(logits, dim=-2)
-        logits = logits.permute(3, 1, 2, 0)
-
-        try:
-            logits_silence = torch.cat(logits_silence, dim=-2)
-        except (RuntimeError, ValueError) as e:
-            logits_silence = []
-            print(f"from_audio exception: {e}")
-    else:
-        logits = torch.cat(logits)
-    pitch = None
-    times = None
-    periodicity = None
-
-    logits_dict = {}
-    logits_dict[penn.model.KEY_LOGITS] = logits
-
-    if len(logits_silence) > 0:
-        logits_dict[penn.model.KEY_SILENCE] = logits_silence
-
-    with torchutil.time.context('decode'):
-        # pitch is in Hz
-        predicted, pitch, periodicity = penn.postprocess(logits_dict)
-        pitch = pitch.detach().numpy()[0, ...]
-        # pitch = np.split(pitch, pitch.shape[0])
-        times = penn.HOPSIZE_SECONDS * np.arange(pitch[0].shape[-1])
-        periodicity = periodicity.detach().numpy()
-
-    logits = torch.nan_to_num(
-            logits,
-            neginf=torch.min(logits[torch.logical_not(torch.isneginf(logits))]),
-            posinf=torch.max(logits[torch.logical_not(torch.isposinf(logits))])
-            )
-    logits = torch.softmax(logits, dim=2)
-
-    if silence and len(logits_silence) > 0:
-        periodicity = logits_silence
-
-    return pitch, times, periodicity, logits
-
-
-def get_ground_truth(ground_truth_file,
-                     start : float=0,
-                     duration : float=None,
-                     hop_length_seconds : float=penn.HOPSIZE_SECONDS):
-    assert path.isfile(ground_truth_file)
-
-    filename, file_extension = path.splitext(ground_truth_file)
-
-    if file_extension == '.npy' and hop_length_seconds is not None:
-        pitch_array = np.load(ground_truth_file)
-        times_array = np.arange(pitch_array.shape[-1]) * hop_length_seconds
-        voiced_path = str(ground_truth_file).replace("pitch", "voiced")
-
-        if path.isfile(voiced_path):
-            voiced_array = np.load(voiced_path)
-            pitch_array[np.logical_not(voiced_array)] = 0
-
-    elif file_extension == '.jams':
-        jams_track = jams.load(str(ground_truth_file))
-        duration = jams_track.file_metadata.duration    
-        notes_dict = penn.data.preprocess.jams_to_notes(jams_track)
-        pitch_array, times_array = penn.data.preprocess.notes_dict_to_pitch_array(notes_dict, duration)
-    else:
-        raise ValueError("File extension is not supported")
-
-    start_frame = 0
-    end_frame = -1
-
-    start_frame = np.argmin(np.abs(times_array - start))
-
-    if duration is not None:
-        end_frame = np.argmin(np.abs(times_array - start - duration))
-
-    return pitch_array[..., start_frame:end_frame], times_array[..., start_frame:end_frame]
 
 
 def plot_over_gt_with_plotly(audio, sr, pred_freq, pred_times, gt, return_fig=False):
@@ -201,36 +87,25 @@ def from_file_to_file(audio_file,
                       no_title=False,
                       min_frequency=None,
                       max_frequency=None):
-    # Load audio
-    audio = penn.load.audio(audio_file)
+
+    audio, pred_freq, pred_times, gt_pitch, gt_times, periodicity, logits = \
+            penn.common_utils.from_path(
+            audio_file,
+            ground_truth_file,
+            checkpoint,
+            silence=silence,
+            gpu=gpu,
+            start=start,
+            duration=duration)
 
     file_stem = path.basename(audio_file)
-
-    if checkpoint is None:
-        return 
 
     ylim = None
     if min_frequency is not None and max_frequency is not None:
         ylim = [min_frequency, max_frequency]
 
-    # get the timestamps in frame numbers
-    start_frame = round(start * penn.SAMPLE_RATE)
-
-    end_frame = -1
-    if duration is not None:
-        end_frame = round((start + duration)* penn.SAMPLE_RATE)
-
-    audio = audio[..., start_frame : end_frame]
-
-    # get logits
-    pred_freq, pred_times, periodicity, logits = from_audio(audio, penn.SAMPLE_RATE, checkpoint, gpu, silence=silence)
-    pred_times += start
-
     if not plot_logits:
         logits = None
-
-    # get the ground truth
-    gt_pitch, gt_times = get_ground_truth(ground_truth_file, start, duration)
 
     # get the stft of the audio
     audio, sr = torchaudio.load(audio_file)

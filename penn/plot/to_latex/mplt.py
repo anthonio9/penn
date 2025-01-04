@@ -196,8 +196,8 @@ def plot_multipitch(fig : plt.Figure,
                    fontsize=fontsize)
 
     # fig.text(0.01, 0.5, 'Frequency [Hz]', ha='left', rotation='vertical', fontsize=fontsize)
-    fig.supylabel('Frequency [Hz]', ha='left', fontsize=fontsize)
-    fig.supxlabel('Time [s]', fontsize=fontsize)
+    fig.supylabel('Frequency [Hz]', ha='left', fontsize=fontsize*2)
+    fig.supxlabel('Time [s]', fontsize=fontsize*2)
 
 
 def plot_periodicity(axis : plt.Axes,
@@ -254,7 +254,7 @@ def plot_multiperiodicity(
         handles, labels = plot_periodicity(axis, periodicity_slice, times, threshold, fontsize=fontsize, plot_ylabel=False)
 
     # set the ylabel on the right side of the figure
-    fig.text(0.98, 0.45, 'Periodicity', ha='left', rotation='vertical', fontsize=fontsize)
+    fig.text(0.98, 0.45, 'Periodicity', ha='left', rotation='vertical', fontsize=fontsize*2)
 
     return handles, labels
 
@@ -305,6 +305,8 @@ def plot_with_matplotlib(
     else:
         plot_stft(axes, audio, sr, time_offset=time_offset)
 
+    breakpoint()
+
     if pred_pitch is not None and pred_times is not None:
         if mutlipitch:
             plot_multipitch(
@@ -353,7 +355,7 @@ def plot_with_matplotlib(
     handles, labels = axes[-1].get_legend_handles_labels()
 
     for ind, axis in enumerate(axes):
-        axis.set_title(f"String {ind}", x=0.03, y=0.7, color='r', fontsize=fontsize, backgroundcolor= 'silver')
+        axis.set_title(f"String {ind}", x=0.03, y=0.7, color='r', fontsize=fontsize, backgroundcolor= 'white')
 
     if periodicity is not None:
         if mutlipitch:

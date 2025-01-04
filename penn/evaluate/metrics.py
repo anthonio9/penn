@@ -198,6 +198,7 @@ class MutliPitchMetrics:
             mrca.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed)
             mrpa.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed)
             mrmse.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed)
+            breakpoint()
 
             # Special case with deleted empty timestamps in the pitch array
             # get common timestamps

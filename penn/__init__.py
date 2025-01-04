@@ -28,6 +28,7 @@ from .config.static import *
 from .core import *
 from .model import Model
 from .train import loss, train
+from . import common_utils
 from . import convert
 from . import data
 from . import decode
