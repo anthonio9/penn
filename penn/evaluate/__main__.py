@@ -40,6 +40,11 @@ def parse_args():
         '--iterations',
         type=int,
         help='number of tested data pieces')
+    parser.add_argument(
+        '-s',
+        '--silence',
+        action='store_true',
+        help='Set to replace periodicity estimation with voicing head predictions')
 
     return parser.parse_known_args()[0]
 

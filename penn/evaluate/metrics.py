@@ -117,13 +117,14 @@ class PitchMetrics:
 
 class MutliPitchMetrics:
 
-    def __init__(self, thresholds=None):
+    def __init__(self, thresholds=None, pitch_cats=penn.PITCH_CATS):
         if thresholds is None:
             thresholds = sorted(list(set(
                 [2 ** -i for i in range(1, 11)] +
                 [.1 * i for i in range(10)])))
 
         self.thresholds = thresholds
+        self.pitch_cats = pitch_cats
         self.mrca = [FRCA2() for _ in range(len(thresholds))]
         self.mrmse = [FRMSE2() for _ in range(len(thresholds))]
         self.mrpa = [FRPA2() for _ in range(len(thresholds))]
@@ -179,6 +180,14 @@ class MutliPitchMetrics:
             # remember for the "Special case" section
             predicted_voiced = torch.logical_not(pitch_restored == 0)
 
+            # for RMSE
+            pitch_non_empty, _ = penn.core.remove_empty_timestamps(pitch_restored, target_voiced_restored)
+            target_non_empty, target_non_empty_voicing = penn.core.remove_empty_timestamps(target_restored, target_voiced_restored)
+
+            # add a very small number to get rid off possible log errors
+            pitch_non_empty[pitch_non_empty == 0] += 10e-5
+            target_non_empty[target_non_empty == 0] += 10e-5
+
             # add a very small number to get rid off possible log errors
             pitch_restored[pitch_restored == 0] = penn.FMIN + 10e-5
             target_restored[target_restored == 0] = penn.FMIN + 10e-5
@@ -195,10 +204,10 @@ class MutliPitchMetrics:
                     target_cents, target_voiced_restored)
 
             # Update metrics
-            mrca.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed)
-            mrpa.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed)
-            mrmse.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed)
-            breakpoint()
+            mrca.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed, pitch_cats=self.pitch_cats)
+            mrpa.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed, pitch_cats=self.pitch_cats)
+            # mrmse.update(pitch_non_empty, target_non_empty, target_non_empty_voicing, pitch_cats=self.pitch_cats)
+            mrmse.update(pitch_cents_not_empty, target_cents_not_empty, target_voiced_compressed, pitch_cats=self.pitch_cats)
 
             # Special case with deleted empty timestamps in the pitch array
             # get common timestamps
@@ -211,9 +220,10 @@ class MutliPitchMetrics:
             target_cents = target_cents[..., common_voiced]
 
             try: 
-                mrca2.update(pitch_cents, target_cents, target_voiced_compressed)
-                mrpa2.update(pitch_cents, target_cents, target_voiced_compressed)
-                mrmse2.update(pitch_cents, target_cents, target_voiced_compressed)
+                mrca2.update(pitch_cents, target_cents, target_voiced_compressed, pitch_cats=self.pitch_cats)
+                mrpa2.update(pitch_cents, target_cents, target_voiced_compressed, pitch_cats=self.pitch_cats)
+                mrmse2.update(pitch_cents, target_cents, target_voiced_compressed, pitch_cats=self.pitch_cats)
+
             except IndexError as ex:
                 print(f"MultiPitch Metrics: {ex}")
 
@@ -240,9 +250,10 @@ class MutliPitchMetrics:
 
 class FRMSE2(torchutil.metrics.RMSE):
     """Raw chroma accuracy"""
-    def update(self, predicted, target, target_voiced):
+    def update(self, predicted, target, target_voiced, pitch_cats=penn.PITCH_CATS):
         # subtrack each row of predicted from the target
-        for ind in range(penn.PITCH_CATS):
+        for ind in range(pitch_cats):
+            # breakpoint()
             # evaluate on per-string basis, row by row of voiced target
             voiced_row = target_voiced[..., ind, :].squeeze()
             target_row = target[..., ind, voiced_row]
@@ -265,9 +276,9 @@ class FRMSE2(torchutil.metrics.RMSE):
 class FRCA2(torchutil.metrics.Average):
     """Very simple metric checking if ground truth is present
     in any of the predicted values, no mask"""
-    def update(self, predicted, target, target_voiced):
+    def update(self, predicted, target, target_voiced, pitch_cats=penn.PITCH_CATS):
         # subtract each row of predicted from the target
-        for ind in range(penn.PITCH_CATS):
+        for ind in range(pitch_cats):
             # evaluate on per-string basis, row by row of voiced target
             voiced_row = target_voiced[..., ind, :].squeeze()
             target_row = target[..., ind, voiced_row]
@@ -295,9 +306,9 @@ class FRCA2(torchutil.metrics.Average):
 class FRPA2(torchutil.metrics.Average):
     """Very simple metric checking if ground truth is present
     in any of the predicted values, no mask"""
-    def update(self, predicted, target, target_voiced):
+    def update(self, predicted, target, target_voiced, pitch_cats=penn.PITCH_CATS):
         # subtract each row of predicted from the target
-        for ind in range(penn.PITCH_CATS):
+        for ind in range(pitch_cats):
             # evaluate on per-string basis, row by row of voiced target
             voiced_row = target_voiced[..., ind, :].squeeze()
             target_row = target[..., ind, voiced_row]
@@ -309,7 +320,7 @@ class FRPA2(torchutil.metrics.Average):
             difference = penn.cents(predicted_tmp, target_row)
 
             difference_under_threshold = torch.abs(difference) < THRESHOLD
-            difference_under_threshold_sum = difference_under_threshold.sum(dim=1)
+            difference_under_threshold_sum = difference_under_threshold.sum(dim=-2)
             difference_under_threshold_sum = difference_under_threshold_sum.bool()
 
             # Count predictions that are within 50 cents of target

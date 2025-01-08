@@ -305,8 +305,6 @@ def plot_with_matplotlib(
     else:
         plot_stft(axes, audio, sr, time_offset=time_offset)
 
-    breakpoint()
-
     if pred_pitch is not None and pred_times is not None:
         if mutlipitch:
             plot_multipitch(

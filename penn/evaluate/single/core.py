@@ -1,6 +1,7 @@
 import penn
 import pprint
 import torch
+import numpy as np
 
 def from_file_to_file(audio_file,
                       ground_truth_file,
@@ -32,9 +33,14 @@ def from_file_to_file(audio_file,
             start=start,
             duration=duration)
 
-    pred_pitch = torch.from_numpy(pred_pitch)
-    periodicity = torch.from_numpy(periodicity)
-    gt_pitch = torch.from_numpy(gt_pitch)
+    if type(pred_pitch) is np.ndarray:
+        pred_pitch = torch.from_numpy(pred_pitch)
+
+    if type(periodicity) is np.ndarray:
+        periodicity = torch.from_numpy(periodicity)
+
+    if type(gt_pitch) is np.ndarray:
+        gt_pitch = torch.from_numpy(gt_pitch)
 
     if len(pred_pitch.shape) == 2:
         pred_pitch = pred_pitch.unsqueeze(dim=0)
@@ -46,7 +52,15 @@ def from_file_to_file(audio_file,
         gt_pitch = gt_pitch.unsqueeze(dim=0)
 
     # Get metric class
-    metrics = penn.evaluate.MutliPitchMetrics()
+    metrics = penn.evaluate.MutliPitchMetrics([0.5])
+
+    max_len = min(pred_pitch.shape[-1], gt_pitch.shape[-1])
+    pred_pitch = pred_pitch[..., :max_len]
+    gt_pitch = gt_pitch[..., :max_len]
+    periodicity = periodicity[..., :max_len]
+
+    breakpoint()
+
     metrics.update(pred_pitch, periodicity, gt_pitch, gt_pitch != 0)
 
     pprint.pp(f"metrics: {metrics()}")

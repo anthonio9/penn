@@ -23,14 +23,20 @@ def datasets(
     gpu=None,
     benchmark=False,
     evaluate_periodicity=False,
-    iterations=None):
+    iterations=None,
+    silence=False):
     """Perform evaluation"""
     # Make output directory
     directory = penn.EVAL_DIR / penn.CONFIG
     directory.mkdir(exist_ok=True, parents=True)
 
     # Evaluate pitch estimation quality and save logits
-    pitch_quality(directory, datasets, checkpoint, gpu, iterations=iterations)
+    pitch_quality(directory,
+                  datasets,
+                  checkpoint,
+                  gpu,
+                  iterations=iterations,
+                  silence=silence)
 
     # Perform benchmarking on CPU
     if benchmark:
@@ -405,17 +411,21 @@ def pitch_quality(
     datasets=penn.EVALUATION_DATASETS,
     checkpoint=None,
     gpu=None,
-    iterations=None):
+    iterations=None,
+    silence=False):
     """Evaluate pitch estimation quality"""
+
+    # only made for penn, as this is a polyphonic pitch recognition project
+    if penn.METHOD != 'penn':
+        return
+
     device = torch.device('cpu' if gpu is None else f'cuda:{gpu}')
 
     # Containers for results
     overall, granular = {}, {}
 
     # Get metric class
-    metric_fn = (
-        penn.evaluate.PitchMetrics if penn.METHOD == 'dio' else
-        penn.evaluate.Metrics)
+    metric_fn = penn.evaluate.MutliPitchMetrics
 
     # Per-file metrics
     file_metrics = metric_fn()
@@ -436,140 +446,82 @@ def pitch_quality(
         dataset_metrics.reset()
 
         # Iterate over test set
-        for audio, bins, pitch, voiced, stem in torchutil.iterator(
+        for audio, bins, gt_pitch, voiced, stem in torchutil.iterator(
             penn.data.loader([dataset], 'test'),
             f'Evaluating {penn.CONFIG} pitch quality on {dataset}'
         ):
-
             # Reset file metrics
             file_metrics.reset()
 
-            if penn.METHOD == 'penn':
 
-                # Accumulate logits
-                logits = []
+            # Accumulate logits
+            logits = []
 
-                # Preprocess audio
-                batch_size = \
-                    None if gpu is None else penn.EVALUATION_BATCH_SIZE
-                for i, frames in enumerate(
-                    penn.preprocess(
-                        audio[0],
-                        penn.SAMPLE_RATE,
-                        batch_size=batch_size,
-                        center='half-hop'
-                    )
-                ):
+            if penn.FCN:
+                audio = audio.squeeze(dim=0)
 
-                    # Copy to device
-                    frames = frames.to(device)
+            pred_pitch, pred_times, periodicity, logits = \
+                    penn.common_utils.from_audio(
+                            audio,
+                            penn.SAMPLE_RATE,
+                            checkpoint=checkpoint,
+                            gpu=gpu,
+                            silence=silence)
 
-                    # Slice features and copy to GPU
-                    try:
-                        start = i * penn.EVALUATION_BATCH_SIZE
-                    except TypeError:
-                        start = 0
+            # # Preprocess audio
+            # batch_size = \
+            #     None if gpu is None else penn.EVALUATION_BATCH_SIZE
+            # for i, frames in enumerate(
+            #     penn.preprocess(
+            #         audio[0],
+            #         penn.SAMPLE_RATE,
+            #         batch_size=batch_size,
+            #         center='half-hop'
+            #     )
+            # ):
+            #
+            #     # Copy to device
+            #     frames = frames.to(device)
+            #
+            #     # Slice features and copy to GPU
+            #     try:
+            #         start = i * penn.EVALUATION_BATCH_SIZE
+            #     except TypeError:
+            #         start = 0
+            #
+            #     end = start + len(frames)
+            #     batch_bins = bins[:, start:end].to(device)
+            #     batch_pitch = pitch[:, start:end].to(device)
+            #     batch_voiced = voiced[:, start:end].to(device)
+            #
+            #     # Infer
+            #     batch_dict = penn.infer(frames, checkpoint)
+            #     batch_logits = batch_dict[penn.model.KEY_LOGITS].detach()
+            #
+            #     # Update metrics
+            #     args = (
+            #         penn.core.logits_dict_detach(batch_dict),
+            #         batch_bins,
+            #         batch_pitch,
+            #         batch_voiced)
+            #
+            #     file_metrics.update(*args)
+            #     dataset_metrics.update(*args)
+            #     aggregate_metrics.update(*args)
+            #
+            #     # Accumulate logits
+            #     logits.append(batch_logits)
 
-                    end = start + len(frames)
-                    batch_bins = bins[:, start:end].to(device)
-                    batch_pitch = pitch[:, start:end].to(device)
-                    batch_voiced = voiced[:, start:end].to(device)
+            max_len = min(pred_pitch.shape[-1], gt_pitch.shape[-1])
+            pred_pitch = pred_pitch[..., :max_len]
+            gt_pitch = gt_pitch[..., :max_len]
+            periodicity = periodicity[..., :max_len]
 
-                    # Infer
-                    batch_dict = penn.infer(frames, checkpoint)
-                    batch_logits = batch_dict[penn.model.KEY_LOGITS].detach()
+            eval_args = (pred_pitch, periodicity, gt_pitch, gt_pitch != 0)
 
-                    # Update metrics
-                    args = (
-                        penn.core.logits_dict_detach(batch_dict),
-                        batch_bins,
-                        batch_pitch,
-                        batch_voiced)
-
-                    file_metrics.update(*args)
-                    dataset_metrics.update(*args)
-                    aggregate_metrics.update(*args)
-
-                    # Accumulate logits
-                    logits.append(batch_logits)
-                logits = torch.cat(logits)
-
-            elif penn.METHOD == 'torchcrepe':
-
-                import torchcrepe
-
-                # Accumulate logits
-                logits = []
-
-                # Postprocessing breaks gradients, so just don't compute them
-                with torch.no_grad():
-
-                    # Preprocess audio
-                    batch_size = \
-                        None if gpu is None else penn.EVALUATION_BATCH_SIZE
-                    pad = (penn.WINDOW_SIZE - penn.HOPSIZE) // 2
-                    generator = torchcrepe.preprocess(
-                        torch.nn.functional.pad(audio, (pad, pad))[0],
-                        penn.SAMPLE_RATE,
-                        penn.HOPSIZE,
-                        batch_size,
-                        device,
-                        False)
-                    for i, frames in enumerate(generator):
-
-                        # Infer independent probabilities for each pitch bin
-                        batch_logits = torchcrepe.infer(frames.to(device))[:, :, None]
-
-                        # Slice features and copy to GPU
-                        start = i * penn.EVALUATION_BATCH_SIZE
-                        end = start + frames.shape[0]
-                        batch_bins = bins[:, start:end].to(device)
-                        batch_pitch = pitch[:, start:end].to(device)
-                        batch_voiced = voiced[:, start:end].to(device)
-
-                        # Update metrics
-                        args = (
-                            batch_logits,
-                            batch_bins,
-                            batch_pitch,
-                            batch_voiced)
-                        file_metrics.update(*args)
-                        dataset_metrics.update(*args)
-                        aggregate_metrics.update(*args)
-
-                        # Accumulate logits
-                        logits.append(batch_logits)
-                    logits = torch.cat(logits)
-
-            elif penn.METHOD == 'dio':
-
-                # Pad
-                pad = (penn.WINDOW_SIZE - penn.HOPSIZE) // 2
-                audio = torch.nn.functional.pad(audio, (pad, pad))
-
-                # Infer
-                predicted = penn.dsp.dio.from_audio(audio[0])
-
-                # Update metrics
-                args = predicted, pitch, voiced
-                file_metrics.update(*args)
-                dataset_metrics.update(*args)
-                aggregate_metrics.update(*args)
-
-            elif penn.METHOD == 'pyin':
-
-                # Pad
-                pad = (penn.WINDOW_SIZE - penn.HOPSIZE) // 2
-                audio = torch.nn.functional.pad(audio, (pad, pad))
-
-                # Infer
-                logits = penn.dsp.pyin.infer(audio[0])
-
-                # Update metrics
-                args = logits, bins, pitch, voiced
-                file_metrics.update(*args)
-                dataset_metrics.update(*args)
-                aggregate_metrics.update(*args)
+            file_metrics.update(*eval_args)
+            dataset_metrics.update(*eval_args)
+            aggregate_metrics.update(*eval_args)
 
             # Copy results
             granular[f'{dataset}/{stem[0]}'] = file_metrics()
