@@ -428,13 +428,13 @@ def pitch_quality(
     metric_fn = penn.evaluate.MutliPitchMetrics
 
     # Per-file metrics
-    file_metrics = metric_fn()
+    file_metrics = metric_fn([0.5])
 
     # Per-dataset metrics
-    dataset_metrics = metric_fn()
+    dataset_metrics = metric_fn([0.5])
 
     # Aggregate metrics over all datasets
-    aggregate_metrics = metric_fn()
+    aggregate_metrics = metric_fn([0.5])
 
 
     # Evaluate each dataset
@@ -466,56 +466,17 @@ def pitch_quality(
                             penn.SAMPLE_RATE,
                             checkpoint=checkpoint,
                             gpu=gpu,
-                            silence=silence)
-
-            # # Preprocess audio
-            # batch_size = \
-            #     None if gpu is None else penn.EVALUATION_BATCH_SIZE
-            # for i, frames in enumerate(
-            #     penn.preprocess(
-            #         audio[0],
-            #         penn.SAMPLE_RATE,
-            #         batch_size=batch_size,
-            #         center='half-hop'
-            #     )
-            # ):
-            #
-            #     # Copy to device
-            #     frames = frames.to(device)
-            #
-            #     # Slice features and copy to GPU
-            #     try:
-            #         start = i * penn.EVALUATION_BATCH_SIZE
-            #     except TypeError:
-            #         start = 0
-            #
-            #     end = start + len(frames)
-            #     batch_bins = bins[:, start:end].to(device)
-            #     batch_pitch = pitch[:, start:end].to(device)
-            #     batch_voiced = voiced[:, start:end].to(device)
-            #
-            #     # Infer
-            #     batch_dict = penn.infer(frames, checkpoint)
-            #     batch_logits = batch_dict[penn.model.KEY_LOGITS].detach()
-            #
-            #     # Update metrics
-            #     args = (
-            #         penn.core.logits_dict_detach(batch_dict),
-            #         batch_bins,
-            #         batch_pitch,
-            #         batch_voiced)
-            #
-            #     file_metrics.update(*args)
-            #     dataset_metrics.update(*args)
-            #     aggregate_metrics.update(*args)
-            #
-            #     # Accumulate logits
-            #     logits.append(batch_logits)
+                            silence=silence,
+                            as_numpy=False)
 
             max_len = min(pred_pitch.shape[-1], gt_pitch.shape[-1])
             pred_pitch = pred_pitch[..., :max_len]
             gt_pitch = gt_pitch[..., :max_len]
+            voiced = voiced[..., :max_len]
             periodicity = periodicity[..., :max_len]
+
+            # set non-voiced to 0 Hz
+            gt_pitch[torch.logical_not(voiced)] = 0
 
             eval_args = (pred_pitch, periodicity, gt_pitch, gt_pitch != 0)
 

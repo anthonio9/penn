@@ -31,25 +31,16 @@ def from_file_to_file(audio_file,
             silence=silence,
             gpu=gpu,
             start=start,
-            duration=duration)
-
-    if type(pred_pitch) is np.ndarray:
-        pred_pitch = torch.from_numpy(pred_pitch)
-
-    if type(periodicity) is np.ndarray:
-        periodicity = torch.from_numpy(periodicity)
+            duration=duration, 
+            as_numpy=False)
 
     if type(gt_pitch) is np.ndarray:
         gt_pitch = torch.from_numpy(gt_pitch)
 
-    if len(pred_pitch.shape) == 2:
-        pred_pitch = pred_pitch.unsqueeze(dim=0)
-
-    if len(periodicity.shape) == 2:
-        periodicity = periodicity.unsqueeze(dim=0)
-
     if len(gt_pitch.shape) == 2:
         gt_pitch = gt_pitch.unsqueeze(dim=0)
+
+    breakpoint()
 
     # Get metric class
     metrics = penn.evaluate.MutliPitchMetrics([0.5])

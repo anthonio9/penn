@@ -192,10 +192,18 @@ def from_path(
                     checkpoint,
                     gpu,
                     silence=silence,
-                    as_numpy=True)
+                    as_numpy=as_numpy)
     pred_times += start
 
     # get the ground truth
     gt_pitch, gt_times = penn.common_utils.get_ground_truth(ground_truth_file, start, duration)
+
+    # convert the ground truth to torch tensors to be compatible with metrics class
+    if not as_numpy:
+        gt_pitch = torch.from_numpy(gt_pitch)
+        gt_times = torch.from_numpy(gt_times)
+
+        if len(gt_pitch.shape) == 2:
+            gt_pitch = gt_pitch.unsqueeze(dim=0)
 
     return audio, pred_freq, pred_times, gt_pitch, gt_times, periodicity, logits

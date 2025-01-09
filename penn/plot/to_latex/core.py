@@ -96,7 +96,8 @@ def from_file_to_file(audio_file,
             silence=silence,
             gpu=gpu,
             start=start,
-            duration=duration)
+            duration=duration,
+            as_numpy=True)
 
     file_stem = path.basename(audio_file)
 
