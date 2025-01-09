@@ -120,6 +120,22 @@ def from_audio(
     return process_logits(logits_dict, as_numpy=as_numpy, silence=silence)
 
 
+def load_audio(audio_file : str):
+    assert path.isfile(audio_file)
+
+    filename, file_extension = path.splitext(audio_file)
+
+    if file_extension == '.npy':
+        audio = np.load(audio_file)
+        audio = torch.from_numpy(audio)
+        audio = penn.resample(audio, penn.SAMPLE_RATE)
+        audio = torch.unsqueeze(audio, dim=0)
+    else:
+        audio = penn.load.audio(audio_file)
+
+    return audio
+
+
 def get_ground_truth(ground_truth_file,
                      start : float=0,
                      duration : float=None,
@@ -170,7 +186,7 @@ def from_path(
     """
 
     # Load audio
-    audio = penn.load.audio(audio_file)
+    audio = load_audio(audio_file)
 
     if checkpoint is None:
         raise ValueError("checkpoint parameter not provided! Can't proceed, stopping!")

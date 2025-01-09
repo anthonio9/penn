@@ -109,8 +109,10 @@ def from_file_to_file(audio_file,
         logits = None
 
     # get the stft of the audio
-    audio, sr = torchaudio.load(audio_file)
+    audio = penn.common_utils.load_audio(audio_file)
     audio = audio.cpu().numpy()
+
+    sr = penn.SAMPLE_RATE
 
     # get the timestamps in frame numbers
     start_frame = round(start * sr)

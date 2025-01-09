@@ -40,8 +40,6 @@ def from_file_to_file(audio_file,
     if len(gt_pitch.shape) == 2:
         gt_pitch = gt_pitch.unsqueeze(dim=0)
 
-    breakpoint()
-
     # Get metric class
     metrics = penn.evaluate.MutliPitchMetrics([0.5])
 
@@ -49,8 +47,6 @@ def from_file_to_file(audio_file,
     pred_pitch = pred_pitch[..., :max_len]
     gt_pitch = gt_pitch[..., :max_len]
     periodicity = periodicity[..., :max_len]
-
-    breakpoint()
 
     metrics.update(pred_pitch, periodicity, gt_pitch, gt_pitch != 0)
 
