@@ -143,13 +143,17 @@ class MutliPitchMetrics:
             self.mrpa2,
             self.thresholds
         ):
-            result |= {
-                f'mrca-{threshold:.6f}': mrca(),
-                f'mrmse-{threshold:.6f}': mrmse(),
-                f'mrpa-{threshold:.6f}': mrpa(),
-                f'mrca2-{threshold:.6f}': mrca2(),
-                f'mrmse2-{threshold:.6f}': mrmse2(),
-                f'mrpa2-{threshold:.6f}': mrpa2()}
+            try:
+                result |= {
+                    f'mrca-{threshold:.6f}': mrca(),
+                    f'mrmse-{threshold:.6f}': mrmse(),
+                    f'mrpa-{threshold:.6f}': mrpa(),
+                    f'mrca2-{threshold:.6f}': mrca2(),
+                    f'mrmse2-{threshold:.6f}': mrmse2(),
+                    f'mrpa2-{threshold:.6f}': mrpa2()}
+            except ZeroDivisionError as er:
+                result |= {}
+                print(f"MultiPitchMetrics error for threshold {threshold}: {er}")
 
         return result
 

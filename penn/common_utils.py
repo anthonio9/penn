@@ -50,12 +50,12 @@ def logits_from_audio(
 
         try:
             logits_silence = torch.cat(logits_silence, dim=-2)
+            # logits_silence = logits_silence.permute(2, 1, 0)
         except (RuntimeError, ValueError) as e:
             logits_silence = []
             print(f"from_audio exception: {e}")
     else:
         logits = torch.cat(logits)
-    periodicity = None
 
     logits_dict = {}
     logits_dict[penn.model.KEY_LOGITS] = logits
@@ -73,6 +73,9 @@ def process_logits(
 
     pitch = None
     times = None
+
+    if not silence:
+        logits_dict.pop(penn.model.KEY_SILENCE, None)
 
     # pitch is in Hz
     predicted_bins, pitch, periodicity = penn.postprocess(logits_dict)

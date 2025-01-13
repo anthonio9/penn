@@ -686,6 +686,11 @@ def preprocess(
                 kernel_size=(1, penn.WINDOW_SIZE),
                 stride=(1, hopsize)).permute(2, 0, 1)
 
+            # frames = torch.nn.functional.unfold(
+            #     batch_audio,
+            #     kernel_size=(1, penn.WINDOW_SIZE),
+            #     stride=(1, hopsize)).permute(2, 0, 1)
+
         # Slow implementation for floating-point hopsizes
         else:
 
@@ -935,7 +940,6 @@ def peak_notes_v1(logits):
     peak_mask = torch.nn.functional.pad(peak_mask_core, (0, 0, 1, 1))
     assert peak_mask.shape == logits.shape
 
-    breakpoint()
 
 
 def peak_notes_v2(logits, width=101, threshold_type=None, peak_window_size=penn.LOCAL_PITCH_WINDOW_SIZE):

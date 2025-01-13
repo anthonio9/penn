@@ -428,13 +428,13 @@ def pitch_quality(
     metric_fn = penn.evaluate.MutliPitchMetrics
 
     # Per-file metrics
-    file_metrics = metric_fn([0.5])
+    file_metrics = metric_fn()
 
     # Per-dataset metrics
-    dataset_metrics = metric_fn([0.5])
+    dataset_metrics = metric_fn()
 
     # Aggregate metrics over all datasets
-    aggregate_metrics = metric_fn([0.5])
+    aggregate_metrics = metric_fn()
 
 
     # Evaluate each dataset
