@@ -453,12 +453,12 @@ def pitch_quality(
             # Reset file metrics
             file_metrics.reset()
 
-
             # Accumulate logits
             logits = []
 
-            if penn.FCN:
-                audio = audio.squeeze(dim=0)
+            # if penn.FCN:
+            #     audio = audio.squeeze(dim=0)
+            audio = audio.squeeze(dim=0)
 
             pred_pitch, pred_times, periodicity, logits = \
                     penn.common_utils.from_audio(

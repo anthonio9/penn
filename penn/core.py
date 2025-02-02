@@ -584,8 +584,6 @@ def postprocess_pitch_and_sort(pitch, voiced):
     # tell if voiced at a given timestamp, shape: [N]
     voiced_summed = voiced.sum(dim=1).squeeze().bool()
 
-    breakpoint()
-
     pitch_voiced = pitch[..., voiced_summed]
     n = pitch_voiced.shape[-1]
 

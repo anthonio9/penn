@@ -23,7 +23,6 @@ def logits_from_audio(
         batch_size=penn.EVALUATION_BATCH_SIZE,
         center='half-hop'
     ):
-
         # Copy to device
         frames = frames.to('cpu' if gpu is None else f'cuda:{gpu}')
 

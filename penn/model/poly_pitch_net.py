@@ -7,7 +7,6 @@ class PolyPitchNet(torch.nn.Sequential):
         super().__init__(*layers)
 
     def forward(self, frames : torch.Tensor):
-        breakpoint()
         # shape=(batch, 1, penn.WINDOW_SIZE) =>
         # shape=(batch, penn.PITCH_BINS, penn.NUM_TRAINING_FRAMES)
         logits = super().forward(frames[:, :, 16:-15])
