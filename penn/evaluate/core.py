@@ -471,7 +471,7 @@ def pitch_quality(
 
             max_len = min(pred_pitch.shape[-1], gt_pitch.shape[-1])
             pred_pitch = pred_pitch[..., :max_len]
-            gt_pitch = gt_pitch[..., :max_len]
+            gt_pitch = gt_pitch[..., :max_len].to(pred_pitch.device)
             voiced = voiced[..., :max_len]
             periodicity = periodicity[..., :max_len]
 
