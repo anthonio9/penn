@@ -238,7 +238,7 @@ def periodicity_quality(
                 # Postprocessing breaks gradients, so just don't compute them
                 with torch.no_grad():
 
-                    # Preprocess audio
+                    # Preprocess Xh62H3!QkeGCVp3OXh62H3!QkeGCVp3Oaudio
                     batch_size = \
                         None if gpu is None else penn.EVALUATION_BATCH_SIZE
                     pad = (penn.WINDOW_SIZE - penn.HOPSIZE) // 2
@@ -426,15 +426,19 @@ def pitch_quality(
 
     # Get metric class
     metric_fn = penn.evaluate.MutliPitchMetrics
+    metric_fn_pitch = penn.evaluate.PitchMetrics
 
     # Per-file metrics
     file_metrics = metric_fn()
+    file_metrics_pitch = metric_fn_pitch()
 
     # Per-dataset metrics
     dataset_metrics = metric_fn()
+    dataset_metrics_pitch = metric_fn_pitch()
 
     # Aggregate metrics over all datasets
     aggregate_metrics = metric_fn()
+    aggregate_metrics_pitch = metric_fn_pitch()
 
 
     # Evaluate each dataset
@@ -444,6 +448,7 @@ def pitch_quality(
 
         # Reset dataset metrics
         dataset_metrics.reset()
+        dataset_metrics_pitch.reset()
 
         # Iterate over test set
         for audio, bins, gt_pitch, voiced, stem in torchutil.iterator(
@@ -452,6 +457,7 @@ def pitch_quality(
         ):
             # Reset file metrics
             file_metrics.reset()
+            file_metrics_pitch.reset()
 
             # Accumulate logits
             logits = []
@@ -479,21 +485,33 @@ def pitch_quality(
             gt_pitch[torch.logical_not(voiced)] = 0
 
             eval_args = (pred_pitch, periodicity, gt_pitch, gt_pitch != 0)
+            eval_args_pitch = (pred_pitch, gt_pitch, gt_pitch != 0)
 
             file_metrics.update(*eval_args)
             dataset_metrics.update(*eval_args)
             aggregate_metrics.update(*eval_args)
 
+            file_metrics_pitch.update(*eval_args_pitch)
+            dataset_metrics_pitch.update(*eval_args_pitch)
+            aggregate_metrics_pitch.update(*eval_args_pitch)
+
             # Copy results
-            granular[f'{dataset}/{stem[0]}'] = file_metrics()
+            granular_dict = file_metrics()
+            granular_dict.update(file_metrics_pitch())
+            granular[f'{dataset}/{stem[0]}'] = granular_dict
 
             if iterations is not None and dataset_iterator > iterations:
                 break
 
             dataset_iterator += 1
-        overall[dataset] = dataset_metrics()
 
-    overall['aggregate'] = aggregate_metrics()
+        overall_dict = dataset_metrics()
+        overall_dict.update(dataset_metrics_pitch())
+        overall[dataset] = overall_dict
+
+    aggregate_dict = aggregate_metrics()
+    aggregate_dict.update(aggregate_metrics_pitch())
+    overall['aggregate'] = aggregate_dict
 
     # Write to json files
     directory = penn.EVAL_DIR / penn.CONFIG
