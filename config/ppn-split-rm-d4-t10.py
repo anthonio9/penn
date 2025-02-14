@@ -8,7 +8,11 @@ DATASETS = ['gset']
 
 EVALUATION_DATASETS = ['gset']
 
+STEPS = 50000
+
 LOG_INTERVAL = 500
+
+CHECKPOINT_INTERVAL = 5000  # steps
 
 # audio parameters
 SAMPLE_RATE = 11025
