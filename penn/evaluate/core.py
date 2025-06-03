@@ -24,7 +24,8 @@ def datasets(
     benchmark=False,
     evaluate_periodicity=False,
     iterations=None,
-    silence=False):
+    silence=False,
+    inference_only=False):
     """Perform evaluation"""
     # Make output directory
     directory = penn.EVAL_DIR / penn.CONFIG
@@ -36,7 +37,8 @@ def datasets(
                   checkpoint,
                   gpu,
                   iterations=iterations,
-                  silence=silence)
+                  silence=silence,
+                  inference_only=inference_only)
 
     # Perform benchmarking on CPU
     if benchmark:
@@ -412,7 +414,8 @@ def pitch_quality(
     checkpoint=None,
     gpu=None,
     iterations=None,
-    silence=False):
+    silence=False,
+    inference_only=False):
     """Evaluate pitch estimation quality"""
 
     # only made for penn, as this is a polyphonic pitch recognition project
@@ -423,6 +426,8 @@ def pitch_quality(
 
     # Containers for results
     overall, granular = {}, {}
+
+    print(f"Iterations: {iterations}")
 
     # Get metric class
     metric_fn = penn.evaluate.MutliPitchMetrics
@@ -455,9 +460,11 @@ def pitch_quality(
             penn.data.loader([dataset], 'test'),
             f'Evaluating {penn.CONFIG} pitch quality on {dataset}'
         ):
-            # Reset file metrics
-            file_metrics.reset()
-            file_metrics_pitch.reset()
+            dataset_iterator += 1
+
+            if iterations is not None and dataset_iterator > iterations:
+                break
+
 
             # Accumulate logits
             logits = []
@@ -474,6 +481,14 @@ def pitch_quality(
                             gpu=gpu,
                             silence=silence,
                             as_numpy=False)
+
+
+            if inference_only:
+                continue
+
+            # Reset file metrics
+            file_metrics.reset()
+            file_metrics_pitch.reset()
 
             max_len = min(pred_pitch.shape[-1], gt_pitch.shape[-1])
             pred_pitch = pred_pitch[..., :max_len]
@@ -500,14 +515,16 @@ def pitch_quality(
             granular_dict.update(file_metrics_pitch())
             granular[f'{dataset}/{stem[0]}'] = granular_dict
 
-            if iterations is not None and dataset_iterator > iterations:
-                break
 
-            dataset_iterator += 1
+        if inference_only:
+            continue
 
         overall_dict = dataset_metrics()
         overall_dict.update(dataset_metrics_pitch())
         overall[dataset] = overall_dict
+
+    if inference_only:
+        return
 
     aggregate_dict = aggregate_metrics()
     aggregate_dict.update(aggregate_metrics_pitch())

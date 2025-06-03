@@ -45,6 +45,11 @@ def parse_args():
         '--silence',
         action='store_true',
         help='Set to replace periodicity estimation with voicing head predictions')
+    parser.add_argument(
+        '-ifo',
+        '--inference_only',
+        action='store_true',
+        help='Set to run inference without metrics')
 
     return parser.parse_known_args()[0]
 

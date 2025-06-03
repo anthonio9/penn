@@ -34,12 +34,34 @@ Training, evaluation, and inference of neural pitch and periodicity estimators i
 
 ## Installation
 
-If you want to perform pitch estimation using a pretrained FCNF0++ model, run
-`pip install penn`
+    ```sh
+    git clone https://github.com/anthonio9/penn.git
+    pip install -e penn 
+    ```
 
-If you want to train or use your own models, run
-`pip install penn[train]`
+## List of helpful commands
 
+**Plot inference results for a given model and data**
+
+```sh
+python -m penn.plot.to_latex \ # script for plotting the results
+    --config config/polypennfcn-15ks-batch.py \ # model configuration name
+    --checkpoint runs/polypennfcn-15ks-batch/00005000.pt \ # model checkpoint
+    --audio_file data/datasets/gset/audio-mono-mic/05_BN3-119-G_solo_mic.wav \ # source audio file
+    --ground_truth_file data/datasets/gset/annotations/05_BN3-119-G_solo.jams \ # ground truth annotations
+    --duration 14.5 \ # duration of the audio excerpt, the audio will be cut to fit given length in seconds
+    -m \ # multipitch 
+    -l \ # plot logits
+    -lw 4.5 \ #  line width of the preditions line
+    -lwgt 4 \ # line width of the ground truth line
+    -fs 15 \ # 
+    -nt \ # do not plot the title
+    -mnf 100 \ # minimum y axis frequency
+    -mxf 550 \ # maximum y axis frequency
+    -t 0.2 \ # periodicity threshold value
+```
+
+Use `--help` to print all of the options with their descriptions.
 
 ## Inference
 

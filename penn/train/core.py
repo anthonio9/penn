@@ -126,7 +126,7 @@ def train(datasets, directory, gpu=None, use_wand=False):
             # Unpack batch
             # audio, bins, *_ = batch
             audio, bins, _, voiced, *_ = batch
-
+            
             with torch.autocast(device.type):
 
                 # Forward pass
