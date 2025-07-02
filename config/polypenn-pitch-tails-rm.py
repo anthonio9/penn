@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-15ks-drop'
+CONFIG = 'polypenn-pitch-tails-rm'
 
 # gset only
 DATASETS = ['gset']
@@ -20,35 +20,20 @@ SAMPLE_RATE = 11025
 # the original hopsize is 256 samples, this is 4 times less than that
 HOPSIZE = 64 
 
-WINDOW_SIZE = HOPSIZE
-
 # use only the voiced frames
 VOICED_ONLY = True
 
 STRING_INDEX = None
 
 # poly pitch net model
-MODEL = 'polypennfcn'
+MODEL = 'polypenn'
 
 PITCH_CATS = 6
 
 GSET_SPLIT_PLAYERS = True
 
-NUM_TRAINING_FRAMES = 128 
+REMOVE_OVERHANGS = True
 
-BATCH_SIZE = 32 
+REMOVE_OVERHANGS_DIVIDER = 4
 
-NORMALIZATION = 'instance'
-
-FCN = True
-
-DECODER = 'argmax'
-
-# Batch size to use for evaluation
-EVALUATION_BATCH_SIZE = None
-
-KERNEL_SIZE = 15 
-
-PADDING_SIZE = 7
-
-DROPOUT = 0.2
+REMOVE_OVERHANGS_THRESHOLD = 10

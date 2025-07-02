@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-3ks-batch'
+CONFIG = 'polypennfcn-eb-pitch-tails-rm'
 
 # gset only
 DATASETS = ['gset']
@@ -47,6 +47,12 @@ DECODER = 'argmax'
 # Batch size to use for evaluation
 EVALUATION_BATCH_SIZE = None
 
-KERNEL_SIZE = 3
+KERNEL_SIZE = 15 
 
-PADDING_SIZE = 1
+PADDING_SIZE = 7
+
+SILENCE_HEAD = True
+
+REMOVE_OVERHANGS_DIVIDER = 4
+
+REMOVE_OVERHANGS_THRESHOLD = 10

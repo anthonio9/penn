@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-31ks'
+CONFIG = 'polypennfcn-eb-pitch-tails-rm'
 
 # gset only
 DATASETS = ['gset']
@@ -38,7 +38,7 @@ NUM_TRAINING_FRAMES = 128
 
 BATCH_SIZE = 32 
 
-NORMALIZATION = 'instance'
+NORMALIZATION = 'batch'
 
 FCN = True
 
@@ -47,6 +47,12 @@ DECODER = 'argmax'
 # Batch size to use for evaluation
 EVALUATION_BATCH_SIZE = None
 
-KERNEL_SIZE = 31
+KERNEL_SIZE = 15 
 
-PADDING_SIZE = 15
+PADDING_SIZE = 7
+
+REMOVE_OVERHANGS = True
+
+REMOVE_OVERHANGS_DIVIDER = 4
+
+REMOVE_OVERHANGS_THRESHOLD = 10

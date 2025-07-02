@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-15ks-batch-1024'
+CONFIG = 'polypennfcn-vdh'
 
 # gset only
 DATASETS = ['gset']
@@ -34,7 +34,7 @@ PITCH_CATS = 6
 
 GSET_SPLIT_PLAYERS = True
 
-NUM_TRAINING_FRAMES = 1024
+NUM_TRAINING_FRAMES = 128 
 
 BATCH_SIZE = 32 
 
@@ -50,3 +50,5 @@ EVALUATION_BATCH_SIZE = None
 KERNEL_SIZE = 15 
 
 PADDING_SIZE = 7
+
+SILENCE_HEAD = True

@@ -1,7 +1,7 @@
 MODULE = 'penn'
 
 # Configuration name
-CONFIG = 'polypennfcn-small-window'
+CONFIG = 'polypennfcn-eb'
 
 # gset only
 DATASETS = ['gset']
@@ -34,11 +34,11 @@ PITCH_CATS = 6
 
 GSET_SPLIT_PLAYERS = True
 
-NUM_TRAINING_FRAMES = 128 
+NUM_TRAINING_FRAMES = 128
 
-BATCH_SIZE = 32 
+BATCH_SIZE = 32
 
-NORMALIZATION = 'instance'
+NORMALIZATION = 'batch'
 
 FCN = True
 
@@ -47,6 +47,6 @@ DECODER = 'argmax'
 # Batch size to use for evaluation
 EVALUATION_BATCH_SIZE = None
 
-KERNEL_SIZE = 3
+KERNEL_SIZE = 15 
 
-PADDING_SIZE = 1
+PADDING_SIZE = 7
