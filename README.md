@@ -34,12 +34,14 @@ Training, evaluation, and inference of neural pitch and periodicity estimators i
 
 ## Installation
 
-    ```sh
-    git clone https://github.com/anthonio9/penn.git
-    pip install -e penn 
-    ```
+```sh
+git clone https://github.com/anthonio9/penn.git
+pip install -e penn 
+```
 
 ## List of helpful commands
+
+**Run training**
 
 **Plot inference results for a given model and data**
 
@@ -62,6 +64,8 @@ python -m penn.plot.to_latex \ # script for plotting the results
 ```
 
 Use `--help` to print all of the options with their descriptions.
+
+**Run evaluation**
 
 ## Inference
 
